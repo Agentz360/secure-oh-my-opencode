@@ -54,7 +54,7 @@ export const HookNameSchema = z.enum([
   "directory-readme-injector",
   "empty-task-response-detector",
   "think-mode",
-  "anthropic-auto-compact",
+  "anthropic-context-window-limit-recovery",
   "rules-injector",
   "background-notification",
   "auto-update-checker",
@@ -65,6 +65,7 @@ export const HookNameSchema = z.enum([
   "interactive-bash-session",
   "empty-message-sanitizer",
   "thinking-block-validator",
+  "ralph-loop",
 ])
 
 export const BuiltinCommandNameSchema = z.enum([
@@ -163,16 +164,63 @@ export const DynamicContextPruningConfigSchema = z.object({
 export const ExperimentalConfigSchema = z.object({
   aggressive_truncation: z.boolean().optional(),
   auto_resume: z.boolean().optional(),
-  /** Enable preemptive compaction at threshold (default: true) */
+  /** Enable preemptive compaction at threshold (default: false) */
   preemptive_compaction: z.boolean().optional(),
   /** Threshold percentage to trigger preemptive compaction (default: 0.80) */
   preemptive_compaction_threshold: z.number().min(0.5).max(0.95).optional(),
-  /** Truncate all tool outputs, not just whitelisted tools (default: true) */
-  truncate_all_tool_outputs: z.boolean().default(true),
+  /** Truncate all tool outputs, not just whitelisted tools (default: false). Tool output truncator is enabled by default - disable via disabled_hooks. */
+  truncate_all_tool_outputs: z.boolean().optional(),
   /** Dynamic context pruning configuration */
   dynamic_context_pruning: DynamicContextPruningConfigSchema.optional(),
   /** Enable DCP (Dynamic Context Pruning) for compaction - runs first when token limit exceeded (default: false) */
   dcp_for_compaction: z.boolean().optional(),
+})
+
+export const SkillSourceSchema = z.union([
+  z.string(),
+  z.object({
+    path: z.string(),
+    recursive: z.boolean().optional(),
+    glob: z.string().optional(),
+  }),
+])
+
+export const SkillDefinitionSchema = z.object({
+  description: z.string().optional(),
+  template: z.string().optional(),
+  from: z.string().optional(),
+  model: z.string().optional(),
+  agent: z.string().optional(),
+  subtask: z.boolean().optional(),
+  "argument-hint": z.string().optional(),
+  license: z.string().optional(),
+  compatibility: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  "allowed-tools": z.array(z.string()).optional(),
+  disable: z.boolean().optional(),
+})
+
+export const SkillEntrySchema = z.union([
+  z.boolean(),
+  SkillDefinitionSchema,
+])
+
+export const SkillsConfigSchema = z.union([
+  z.array(z.string()),
+  z.record(z.string(), SkillEntrySchema).and(z.object({
+    sources: z.array(SkillSourceSchema).optional(),
+    enable: z.array(z.string()).optional(),
+    disable: z.array(z.string()).optional(),
+  }).partial()),
+])
+
+export const RalphLoopConfigSchema = z.object({
+  /** Enable ralph loop functionality (default: false - opt-in feature) */
+  enabled: z.boolean().default(false),
+  /** Default max iterations if not specified in command (default: 100) */
+  default_max_iterations: z.number().min(1).max(1000).default(100),
+  /** Custom state file directory relative to project root (default: .opencode/) */
+  state_dir: z.string().optional(),
 })
 
 export const OhMyOpenCodeConfigSchema = z.object({
@@ -188,6 +236,8 @@ export const OhMyOpenCodeConfigSchema = z.object({
   comment_checker: CommentCheckerConfigSchema.optional(),
   experimental: ExperimentalConfigSchema.optional(),
   auto_update: z.boolean().optional(),
+  skills: SkillsConfigSchema.optional(),
+  ralph_loop: RalphLoopConfigSchema.optional(),
 })
 
 export type OhMyOpenCodeConfig = z.infer<typeof OhMyOpenCodeConfigSchema>
@@ -200,5 +250,8 @@ export type SisyphusAgentConfig = z.infer<typeof SisyphusAgentConfigSchema>
 export type CommentCheckerConfig = z.infer<typeof CommentCheckerConfigSchema>
 export type ExperimentalConfig = z.infer<typeof ExperimentalConfigSchema>
 export type DynamicContextPruningConfig = z.infer<typeof DynamicContextPruningConfigSchema>
+export type SkillsConfig = z.infer<typeof SkillsConfigSchema>
+export type SkillDefinition = z.infer<typeof SkillDefinitionSchema>
+export type RalphLoopConfig = z.infer<typeof RalphLoopConfigSchema>
 
 export { McpNameSchema, type McpName } from "../mcp/types"

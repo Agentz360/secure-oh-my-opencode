@@ -12,7 +12,7 @@ import {
   createEmptyTaskResponseDetectorHook,
   createThinkModeHook,
   createClaudeCodeHooksHook,
-  createAnthropicAutoCompactHook,
+  createAnthropicContextWindowLimitRecoveryHook,
   createPreemptiveCompactionHook,
   createCompactionContextInjector,
   createRulesInjectorHook,
@@ -24,6 +24,7 @@ import {
   createInteractiveBashSessionHook,
   createEmptyMessageSanitizerHook,
   createThinkingBlockValidatorHook,
+  createRalphLoopHook,
 } from "./hooks";
 import { createGoogleAntigravityAuthPlugin } from "./auth/antigravity";
 import {
@@ -33,6 +34,18 @@ import {
   loadOpencodeProjectCommands,
 } from "./features/claude-code-command-loader";
 import { loadBuiltinCommands } from "./features/builtin-commands";
+import {
+  loadUserSkills,
+  loadProjectSkills,
+  loadOpencodeGlobalSkills,
+  loadOpencodeProjectSkills,
+  discoverUserClaudeSkills,
+  discoverProjectClaudeSkills,
+  discoverOpencodeGlobalSkills,
+  discoverOpencodeProjectSkills,
+  mergeSkills,
+} from "./features/opencode-skill-loader";
+import { createBuiltinSkills } from "./features/builtin-skills";
 
 import {
   loadUserAgents,
@@ -44,7 +57,7 @@ import {
   setMainSession,
   getMainSessionID,
 } from "./features/claude-code-session-state";
-import { builtinTools, createCallOmoAgent, createBackgroundTools, createLookAt, interactive_bash, getTmuxPath } from "./tools";
+import { builtinTools, createCallOmoAgent, createBackgroundTools, createLookAt, createSkillTool, interactive_bash, getTmuxPath } from "./tools";
 import { BackgroundManager } from "./features/background-agent";
 import { createBuiltinMcps } from "./mcp";
 import { OhMyOpenCodeConfigSchema, type OhMyOpenCodeConfig, type HookName } from "./config";
@@ -260,8 +273,11 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
   const claudeCodeHooks = createClaudeCodeHooksHook(ctx, {
     disabledHooks: (pluginConfig.claude_code?.hooks ?? true) ? undefined : true,
   });
-  const anthropicAutoCompact = isHookEnabled("anthropic-auto-compact")
-    ? createAnthropicAutoCompactHook(ctx, { experimental: pluginConfig.experimental })
+  const anthropicContextWindowLimitRecovery = isHookEnabled("anthropic-context-window-limit-recovery")
+    ? createAnthropicContextWindowLimitRecoveryHook(ctx, {
+        experimental: pluginConfig.experimental,
+        dcpForCompaction: pluginConfig.experimental?.dcp_for_compaction,
+      })
     : null;
   const compactionContextInjector = createCompactionContextInjector();
   const preemptiveCompaction = createPreemptiveCompactionHook(ctx, {
@@ -298,6 +314,10 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
     ? createThinkingBlockValidatorHook()
     : null;
 
+  const ralphLoop = isHookEnabled("ralph-loop")
+    ? createRalphLoopHook(ctx, { config: pluginConfig.ralph_loop })
+    : null;
+
   const backgroundManager = new BackgroundManager(ctx);
 
   const todoContinuationEnforcer = isHookEnabled("todo-continuation-enforcer")
@@ -316,6 +336,17 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
 
   const callOmoAgent = createCallOmoAgent(ctx, backgroundManager);
   const lookAt = createLookAt(ctx);
+  const builtinSkills = createBuiltinSkills();
+  const includeClaudeSkills = pluginConfig.claude_code?.skills !== false;
+  const mergedSkills = mergeSkills(
+    builtinSkills,
+    pluginConfig.skills,
+    includeClaudeSkills ? discoverUserClaudeSkills() : [],
+    discoverOpencodeGlobalSkills(),
+    includeClaudeSkills ? discoverProjectClaudeSkills() : [],
+    discoverOpencodeProjectSkills(),
+  );
+  const skillTool = createSkillTool({ skills: mergedSkills });
 
   const googleAuthHooks = pluginConfig.google_auth !== false
     ? await createGoogleAntigravityAuthPlugin(ctx)
@@ -331,12 +362,46 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
       ...backgroundTools,
       call_omo_agent: callOmoAgent,
       look_at: lookAt,
+      skill: skillTool,
       ...(tmuxAvailable ? { interactive_bash } : {}),
     },
 
     "chat.message": async (input, output) => {
       await claudeCodeHooks["chat.message"]?.(input, output);
       await keywordDetector?.["chat.message"]?.(input, output);
+
+      if (ralphLoop) {
+        const parts = (output as { parts?: Array<{ type: string; text?: string }> }).parts;
+        const promptText = parts
+          ?.filter((p) => p.type === "text" && p.text)
+          .map((p) => p.text)
+          .join("\n")
+          .trim() || "";
+
+        const isRalphLoopTemplate = promptText.includes("You are starting a Ralph Loop") && 
+          promptText.includes("<user-task>");
+        const isCancelRalphTemplate = promptText.includes("Cancel the currently active Ralph Loop");
+
+        if (isRalphLoopTemplate) {
+          const taskMatch = promptText.match(/<user-task>\s*([\s\S]*?)\s*<\/user-task>/i);
+          const rawTask = taskMatch?.[1]?.trim() || "";
+          
+          const quotedMatch = rawTask.match(/^["'](.+?)["']/);
+          const prompt = quotedMatch?.[1] || rawTask.split(/\s+--/)[0]?.trim() || "Complete the task as instructed";
+
+          const maxIterMatch = rawTask.match(/--max-iterations=(\d+)/i);
+          const promiseMatch = rawTask.match(/--completion-promise=["']?([^"'\s]+)["']?/i);
+
+          log("[ralph-loop] Starting loop from chat.message", { sessionID: input.sessionID, prompt });
+          ralphLoop.startLoop(input.sessionID, prompt, {
+            maxIterations: maxIterMatch ? parseInt(maxIterMatch[1], 10) : undefined,
+            completionPromise: promiseMatch?.[1],
+          });
+        } else if (isCancelRalphTemplate) {
+          log("[ralph-loop] Cancelling loop from chat.message", { sessionID: input.sessionID });
+          ralphLoop.cancelLoop(input.sessionID);
+        }
+      }
     },
 
     "experimental.chat.messages.transform": async (
@@ -523,14 +588,25 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
       const systemCommands = config.command ?? {};
       const projectCommands = (pluginConfig.claude_code?.commands ?? true) ? loadProjectCommands() : {};
       const opencodeProjectCommands = loadOpencodeProjectCommands();
+
+      const userSkills = (pluginConfig.claude_code?.skills ?? true) ? loadUserSkills() : {};
+      const projectSkills = (pluginConfig.claude_code?.skills ?? true) ? loadProjectSkills() : {};
+      const opencodeGlobalSkills = loadOpencodeGlobalSkills();
+      const opencodeProjectSkills = loadOpencodeProjectSkills();
+
       config.command = {
         ...builtinCommands,
         ...userCommands,
+        ...userSkills,
         ...opencodeGlobalCommands,
+        ...opencodeGlobalSkills,
         ...systemCommands,
         ...projectCommands,
+        ...projectSkills,
         ...opencodeProjectCommands,
+        ...opencodeProjectSkills,
         ...pluginComponents.commands,
+        ...pluginComponents.skills,
       };
     },
 
@@ -545,10 +621,11 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
       await directoryReadmeInjector?.event(input);
       await rulesInjector?.event(input);
       await thinkMode?.event(input);
-      await anthropicAutoCompact?.event(input);
+      await anthropicContextWindowLimitRecovery?.event(input);
       await preemptiveCompaction?.event(input);
       await agentUsageReminder?.event(input);
       await interactiveBashSession?.event(input);
+      await ralphLoop?.event(input);
 
       const { event } = input;
       const props = event.properties as Record<string, unknown> | undefined;
@@ -614,6 +691,28 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
           background_task: false,
           ...(isExploreOrLibrarian ? { call_omo_agent: false } : {}),
         };
+      }
+
+      if (ralphLoop && input.tool === "slashcommand") {
+        const args = output.args as { command?: string } | undefined;
+        const command = args?.command?.replace(/^\//, "").toLowerCase();
+        const sessionID = input.sessionID || getMainSessionID();
+
+        if (command === "ralph-loop" && sessionID) {
+          const rawArgs = args?.command?.replace(/^\/?(ralph-loop)\s*/i, "") || "";
+          const taskMatch = rawArgs.match(/^["'](.+?)["']/);
+          const prompt = taskMatch?.[1] || rawArgs.split(/\s+--/)[0]?.trim() || "Complete the task as instructed";
+
+          const maxIterMatch = rawArgs.match(/--max-iterations=(\d+)/i);
+          const promiseMatch = rawArgs.match(/--completion-promise=["']?([^"'\s]+)["']?/i);
+
+          ralphLoop.startLoop(sessionID, prompt, {
+            maxIterations: maxIterMatch ? parseInt(maxIterMatch[1], 10) : undefined,
+            completionPromise: promiseMatch?.[1],
+          });
+        } else if (command === "cancel-ralph" && sessionID) {
+          ralphLoop.cancelLoop(sessionID);
+        }
       }
     },
 

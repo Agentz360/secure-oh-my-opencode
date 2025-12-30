@@ -667,6 +667,12 @@ All toggles default to `true` (enabled). Omit the `claude_code` object for full 
 
 When agents thrive, you thrive. But I want to help you directly too.
 
+- **Ralph Loop**: Self-referential development loop that runs until task completion. Inspired by Anthropic's Ralph Wiggum plugin. **Supports all programming languages.**
+  - Start with `/ralph-loop "Build a REST API"` and let the agent work continuously
+  - Loop detects `<promise>DONE</promise>` to know when complete
+  - Auto-continues if agent stops without completion promise
+  - Ends when: completion detected, max iterations reached (default 100), or `/cancel-ralph`
+  - Configure in `oh-my-opencode.json`: `{ "ralph_loop": { "enabled": true, "default_max_iterations": 100 } }`
 - **Keyword Detector**: Automatically detects keywords in your prompts and activates specialized modes:
   - `ultrawork` / `ulw`: Maximum performance mode with parallel agent orchestration
   - `search` / `find` / `찾아` / `検索`: Maximized search effort with parallel explore and librarian agents
@@ -904,7 +910,7 @@ Disable specific built-in hooks via `disabled_hooks` in `~/.config/opencode/oh-m
 }
 ```
 
-Available hooks: `todo-continuation-enforcer`, `context-window-monitor`, `session-recovery`, `session-notification`, `comment-checker`, `grep-output-truncator`, `tool-output-truncator`, `directory-agents-injector`, `directory-readme-injector`, `empty-task-response-detector`, `think-mode`, `anthropic-auto-compact`, `rules-injector`, `background-notification`, `auto-update-checker`, `startup-toast`, `keyword-detector`, `agent-usage-reminder`, `non-interactive-env`, `interactive-bash-session`, `empty-message-sanitizer`, `preemptive-compaction`, `compaction-context-injector`, `thinking-block-validator`, `claude-code-hooks`
+Available hooks: `todo-continuation-enforcer`, `context-window-monitor`, `session-recovery`, `session-notification`, `comment-checker`, `grep-output-truncator`, `tool-output-truncator`, `directory-agents-injector`, `directory-readme-injector`, `empty-task-response-detector`, `think-mode`, `anthropic-context-window-limit-recovery`, `rules-injector`, `background-notification`, `auto-update-checker`, `startup-toast`, `keyword-detector`, `agent-usage-reminder`, `non-interactive-env`, `interactive-bash-session`, `empty-message-sanitizer`, `compaction-context-injector`, `thinking-block-validator`, `claude-code-hooks`, `ralph-loop`
 
 **Note on `auto-update-checker` and `startup-toast`**: The `startup-toast` hook is a sub-feature of `auto-update-checker`. To disable only the startup toast notification while keeping update checking enabled, add `"startup-toast"` to `disabled_hooks`. To disable all update checking features (including the toast), add `"auto-update-checker"` to `disabled_hooks`.
 
@@ -956,20 +962,22 @@ Opt-in experimental features that may change or be removed in future versions. U
 ```json
 {
   "experimental": {
+    "preemptive_compaction": true,
+    "truncate_all_tool_outputs": true,
     "aggressive_truncation": true,
-    "auto_resume": true,
-    "truncate_all_tool_outputs": false,
-    "dcp_on_compaction_failure": true
+    "auto_resume": true
   }
 }
 ```
 
 | Option                      | Default | Description                                                                                                                                                                                  |
 | --------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preemptive_compaction`     | `false` | Compacts session proactively before hitting hard token limits. Runs at 80% context window usage by default.                                                                                  |
+| `preemptive_compaction_threshold` | `0.80` | Threshold percentage (0.5-0.95) to trigger preemptive compaction. Only applies when `preemptive_compaction` is enabled.                                                                     |
+| `truncate_all_tool_outputs` | `false` | Truncates ALL tool outputs instead of just whitelisted tools (Grep, Glob, LSP, AST-grep). Tool output truncator is enabled by default - disable via `disabled_hooks`.                        |
 | `aggressive_truncation`     | `false` | When token limit is exceeded, aggressively truncates tool outputs to fit within limits. More aggressive than the default truncation behavior. Falls back to summarize/revert if insufficient. |
 | `auto_resume`               | `false` | Automatically resumes session after successful recovery from thinking block errors or thinking disabled violations. Extracts the last user message and continues.                            |
-| `truncate_all_tool_outputs` | `true`  | Dynamically truncates ALL tool outputs based on context window usage to prevent prompts from becoming too long. Disable by setting to `false` if you need full tool outputs.                 |
-| `dcp_for_compaction`        | `false` | When enabled, Dynamic Context Pruning (DCP) runs FIRST when token limit errors occur, before attempting compaction. DCP prunes redundant context, then compaction runs immediately. Enable this for smarter recovery when hitting token limits. |
+| `dcp_for_compaction`        | `false` | Enable DCP (Dynamic Context Pruning) for compaction - runs first when token limit exceeded. Prunes duplicate tool calls and old tool outputs before running compaction.                      |
 
 **Warning**: These features are experimental and may cause unexpected behavior. Enable only if you understand the implications.
 

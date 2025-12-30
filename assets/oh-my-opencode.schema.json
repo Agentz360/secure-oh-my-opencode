@@ -50,7 +50,7 @@
           "directory-readme-injector",
           "empty-task-response-detector",
           "think-mode",
-          "anthropic-auto-compact",
+          "anthropic-context-window-limit-recovery",
           "rules-injector",
           "background-notification",
           "auto-update-checker",
@@ -60,7 +60,8 @@
           "non-interactive-env",
           "interactive-bash-session",
           "empty-message-sanitizer",
-          "thinking-block-validator"
+          "thinking-block-validator",
+          "ralph-loop"
         ]
       }
     },
@@ -1410,7 +1411,6 @@
           "maximum": 0.95
         },
         "truncate_all_tool_outputs": {
-          "default": true,
           "type": "boolean"
         },
         "dynamic_context_pruning": {
@@ -1511,6 +1511,143 @@
     },
     "auto_update": {
       "type": "boolean"
+    },
+    "skills": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "allOf": [
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "template": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "agent": {
+                        "type": "string"
+                      },
+                      "subtask": {
+                        "type": "boolean"
+                      },
+                      "argument-hint": {
+                        "type": "string"
+                      },
+                      "license": {
+                        "type": "string"
+                      },
+                      "compatibility": {
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      "allowed-tools": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "disable": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "sources": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "recursive": {
+                            "type": "boolean"
+                          },
+                          "glob": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "enable": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "disable": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "ralph_loop": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "default_max_iterations": {
+          "default": 100,
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "state_dir": {
+          "type": "string"
+        }
+      }
     }
   }
 }

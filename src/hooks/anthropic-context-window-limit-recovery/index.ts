@@ -5,11 +5,12 @@ import { parseAnthropicTokenLimitError } from "./parser"
 import { executeCompact, getLastAssistant } from "./executor"
 import { log } from "../../shared/logger"
 
-export interface AnthropicAutoCompactOptions {
+export interface AnthropicContextWindowLimitRecoveryOptions {
   experimental?: ExperimentalConfig
+  dcpForCompaction?: boolean
 }
 
-function createAutoCompactState(): AutoCompactState {
+function createRecoveryState(): AutoCompactState {
   return {
     pendingCompact: new Set<string>(),
     errorDataBySession: new Map<string, ParsedTokenLimitError>(),
@@ -22,9 +23,10 @@ function createAutoCompactState(): AutoCompactState {
   }
 }
 
-export function createAnthropicAutoCompactHook(ctx: PluginInput, options?: AnthropicAutoCompactOptions) {
-  const autoCompactState = createAutoCompactState()
+export function createAnthropicContextWindowLimitRecoveryHook(ctx: PluginInput, options?: AnthropicContextWindowLimitRecoveryOptions) {
+  const autoCompactState = createRecoveryState()
   const experimental = options?.experimental
+  const dcpForCompaction = options?.dcpForCompaction
 
   const eventHandler = async ({ event }: { event: { type: string; properties?: unknown } }) => {
     const props = event.properties as Record<string, unknown> | undefined
@@ -81,7 +83,8 @@ export function createAnthropicAutoCompactHook(ctx: PluginInput, options?: Anthr
             autoCompactState,
             ctx.client,
             ctx.directory,
-            experimental
+            experimental,
+            dcpForCompaction
           )
         }, 300)
       }
@@ -140,7 +143,8 @@ export function createAnthropicAutoCompactHook(ctx: PluginInput, options?: Anthr
         autoCompactState,
         ctx.client,
         ctx.directory,
-        experimental
+        experimental,
+        dcpForCompaction
       )
     }
   }
