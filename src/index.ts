@@ -61,73 +61,10 @@ import { builtinTools, createCallOmoAgent, createBackgroundTools, createLookAt, 
 import { BackgroundManager } from "./features/background-agent";
 import { createBuiltinMcps } from "./mcp";
 import { OhMyOpenCodeConfigSchema, type OhMyOpenCodeConfig, type HookName } from "./config";
-import { log, deepMerge, getUserConfigDir, addConfigLoadError, parseJsonc, detectConfigFile } from "./shared";
+import { log, deepMerge, getUserConfigDir, addConfigLoadError, parseJsonc, detectConfigFile, migrateConfigFile } from "./shared";
 import { PLAN_SYSTEM_PROMPT, PLAN_PERMISSION } from "./agents/plan-prompt";
 import * as fs from "fs";
 import * as path from "path";
-
-// Migration map: old keys → new keys (for backward compatibility)
-const AGENT_NAME_MAP: Record<string, string> = {
-  // Legacy names (backward compatibility)
-  omo: "Sisyphus",
-  "OmO": "Sisyphus",
-  "OmO-Plan": "Planner-Sisyphus",
-  "omo-plan": "Planner-Sisyphus",
-  // Current names
-  sisyphus: "Sisyphus",
-  "planner-sisyphus": "Planner-Sisyphus",
-  build: "build",
-  oracle: "oracle",
-  librarian: "librarian",
-  explore: "explore",
-  "frontend-ui-ux-engineer": "frontend-ui-ux-engineer",
-  "document-writer": "document-writer",
-  "multimodal-looker": "multimodal-looker",
-};
-
-function migrateAgentNames(agents: Record<string, unknown>): { migrated: Record<string, unknown>; changed: boolean } {
-  const migrated: Record<string, unknown> = {};
-  let changed = false;
-
-  for (const [key, value] of Object.entries(agents)) {
-    const newKey = AGENT_NAME_MAP[key.toLowerCase()] ?? AGENT_NAME_MAP[key] ?? key;
-    if (newKey !== key) {
-      changed = true;
-    }
-    migrated[newKey] = value;
-  }
-
-  return { migrated, changed };
-}
-
-function migrateConfigFile(configPath: string, rawConfig: Record<string, unknown>): boolean {
-  let needsWrite = false;
-
-  if (rawConfig.agents && typeof rawConfig.agents === "object") {
-    const { migrated, changed } = migrateAgentNames(rawConfig.agents as Record<string, unknown>);
-    if (changed) {
-      rawConfig.agents = migrated;
-      needsWrite = true;
-    }
-  }
-
-  if (rawConfig.omo_agent) {
-    rawConfig.sisyphus_agent = rawConfig.omo_agent;
-    delete rawConfig.omo_agent;
-    needsWrite = true;
-  }
-
-  if (needsWrite) {
-    try {
-      fs.writeFileSync(configPath, JSON.stringify(rawConfig, null, 2) + "\n", "utf-8");
-      log(`Migrated config file: ${configPath} (OmO → Sisyphus)`);
-    } catch (err) {
-      log(`Failed to write migrated config to ${configPath}:`, err);
-    }
-  }
-
-  return needsWrite;
-}
 
 function loadConfigFromPath(configPath: string, ctx: any): OhMyOpenCodeConfig | null {
   try {
@@ -279,12 +216,16 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
         dcpForCompaction: pluginConfig.experimental?.dcp_for_compaction,
       })
     : null;
-  const compactionContextInjector = createCompactionContextInjector();
-  const preemptiveCompaction = createPreemptiveCompactionHook(ctx, {
-    experimental: pluginConfig.experimental,
-    onBeforeSummarize: compactionContextInjector,
-    getModelLimit,
-  });
+  const compactionContextInjector = isHookEnabled("compaction-context-injector")
+    ? createCompactionContextInjector()
+    : undefined;
+  const preemptiveCompaction = isHookEnabled("preemptive-compaction")
+    ? createPreemptiveCompactionHook(ctx, {
+        experimental: pluginConfig.experimental,
+        onBeforeSummarize: compactionContextInjector,
+        getModelLimit,
+      })
+    : null;
   const rulesInjector = isHookEnabled("rules-injector")
     ? createRulesInjectorHook(ctx)
     : null;
