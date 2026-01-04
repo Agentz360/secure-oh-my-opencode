@@ -26,6 +26,10 @@ export const BuiltinAgentNameSchema = z.enum([
   "multimodal-looker",
 ])
 
+export const BuiltinSkillNameSchema = z.enum([
+  "playwright",
+])
+
 export const OverridableAgentNameSchema = z.enum([
   "build",
   "plan",
@@ -69,6 +73,8 @@ export const HookNameSchema = z.enum([
   "preemptive-compaction",
   "compaction-context-injector",
   "claude-code-hooks",
+  "auto-slash-command",
+  "edit-error-recovery",
 ])
 
 export const BuiltinCommandNameSchema = z.enum([
@@ -167,7 +173,7 @@ export const DynamicContextPruningConfigSchema = z.object({
 export const ExperimentalConfigSchema = z.object({
   aggressive_truncation: z.boolean().optional(),
   auto_resume: z.boolean().optional(),
-  /** Enable preemptive compaction at threshold (default: false) */
+  /** Enable preemptive compaction at threshold (default: true since v2.9.0) */
   preemptive_compaction: z.boolean().optional(),
   /** Threshold percentage to trigger preemptive compaction (default: 0.80) */
   preemptive_compaction_threshold: z.number().min(0.5).max(0.95).optional(),
@@ -230,6 +236,7 @@ export const OhMyOpenCodeConfigSchema = z.object({
   $schema: z.string().optional(),
   disabled_mcps: z.array(McpNameSchema).optional(),
   disabled_agents: z.array(BuiltinAgentNameSchema).optional(),
+  disabled_skills: z.array(BuiltinSkillNameSchema).optional(),
   disabled_hooks: z.array(HookNameSchema).optional(),
   disabled_commands: z.array(BuiltinCommandNameSchema).optional(),
   agents: AgentOverridesSchema.optional(),
@@ -249,6 +256,7 @@ export type AgentOverrides = z.infer<typeof AgentOverridesSchema>
 export type AgentName = z.infer<typeof AgentNameSchema>
 export type HookName = z.infer<typeof HookNameSchema>
 export type BuiltinCommandName = z.infer<typeof BuiltinCommandNameSchema>
+export type BuiltinSkillName = z.infer<typeof BuiltinSkillNameSchema>
 export type SisyphusAgentConfig = z.infer<typeof SisyphusAgentConfigSchema>
 export type CommentCheckerConfig = z.infer<typeof CommentCheckerConfigSchema>
 export type ExperimentalConfig = z.infer<typeof ExperimentalConfigSchema>

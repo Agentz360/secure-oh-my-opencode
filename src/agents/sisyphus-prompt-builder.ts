@@ -307,3 +307,26 @@ export function buildAntiPatternsSection(agents: AvailableAgent[]): string {
 |----------|-----------|
 ${patterns.join("\n")}`
 }
+
+export function buildUltraworkAgentSection(agents: AvailableAgent[]): string {
+  if (agents.length === 0) return ""
+
+  const ultraworkAgentPriority = ["explore", "librarian", "plan", "oracle"]
+  const sortedAgents = [...agents].sort((a, b) => {
+    const aIdx = ultraworkAgentPriority.indexOf(a.name)
+    const bIdx = ultraworkAgentPriority.indexOf(b.name)
+    if (aIdx === -1 && bIdx === -1) return 0
+    if (aIdx === -1) return 1
+    if (bIdx === -1) return -1
+    return aIdx - bIdx
+  })
+
+  const lines: string[] = []
+  for (const agent of sortedAgents) {
+    const shortDesc = agent.description.split(".")[0] || agent.description
+    const suffix = (agent.name === "explore" || agent.name === "librarian") ? " (multiple)" : ""
+    lines.push(`- **${agent.name}${suffix}**: ${shortDesc}`)
+  }
+
+  return lines.join("\n")
+}

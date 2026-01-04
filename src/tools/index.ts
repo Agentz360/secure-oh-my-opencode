@@ -28,9 +28,12 @@ import {
   session_info,
 } from "./session-manager"
 
+export { sessionExists } from "./session-manager/storage"
+
 export { interactive_bash, startBackgroundCheck as startTmuxCheck } from "./interactive-bash"
 export { createSkillTool } from "./skill"
 export { getTmuxPath } from "./interactive-bash/utils"
+export { createSkillMcpTool } from "./skill-mcp"
 
 import {
   createBackgroundTask,

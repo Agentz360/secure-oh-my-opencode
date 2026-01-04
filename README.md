@@ -7,7 +7,7 @@
 >
 > Be with us!
 >
-> | [<img alt="Discord link" src="https://img.shields.io/discord/1452487457085063218?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square" width="156px" />](https://discord.gg/PWpXmbhF) | Join our [Discord community](https://discord.gg/PWpXmbhF) to connect with contributors and fellow `oh-my-opencode` users. |
+> | [<img alt="Discord link" src="https://img.shields.io/discord/1452487457085063218?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square" width="156px" />](https://discord.gg/PUwSMR9XNk) | Join our [Discord community](https://discord.gg/PUwSMR9XNk) to connect with contributors and fellow `oh-my-opencode` users. |
 > | :-----| :----- |
 > | [<img alt="X link" src="https://img.shields.io/badge/Follow-%40justsisyphus-00CED1?style=flat-square&logo=x&labelColor=black" width="156px" />](https://x.com/justsisyphus) | News and updates for `oh-my-opencode` used to be posted on my X account. <br /> Since it was suspended mistakenly, [@justsisyphus](https://x.com/justsisyphus) now posts updates on my behalf. |
 > | [<img alt="Sponsor" src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=flat-square&logo=github-sponsors&labelColor=black" width="156px" />](https://github.com/sponsors/code-yeongyu) | Support the development of `oh-my-opencode` by [becoming a sponsor](https://github.com/sponsors/code-yeongyu). Your contribution helps keep this project alive and growing. |
@@ -54,6 +54,11 @@ No stupid token consumption massive subagents here. No bloat tools here.
 
 > "Knocked out 8000 eslint warnings with Oh My Opencode, just in a day" — [Jacob Ferrari](https://x.com/jacobferrari_/status/2003258761952289061)
 
+> "I converted a 45k line tauri app into a SaaS web app overnight using Ohmyopencode and ralph loop. Started with interview me prompt, asked it for ratings and recommendations on the questions. It was amazing to watch it work and to wake up this morning to a mostly working website!" - [James Hargis](https://x.com/hargabyte/status/2007299688261882202)
+
+> "Experimenting with open code, oh my opencode and supermemory this weekend to build some minecraft/souls-like abomination."
+> "Asking it to add crouch animations while I go take my post-lunch walk. [Video]" - [MagiMetal](https://x.com/MagiMetal/status/2005374704178373023)
+
 > "You guys should pull this into core and recruit him. Seriously. It's really, really, really good." — Henning Kilset
 
 > "Hire @yeon_gyu_kim if you can convince him, this dude has revolutionized opencode." — [mysticaltech](https://x.com/mysticaltech/status/2001858758608376079)
@@ -64,7 +69,9 @@ No stupid token consumption massive subagents here. No bloat tools here.
 
 > "Oh My Opencode is king of the hill and has no contenders" — [RyanOnThePath](https://x.com/RyanOnThePath/status/2001438321252118548)
 
-> "Isn't the name Sisyphus itself beautiful?" — Sigrid ([@sigridjin_eth](https://x.com/sigridjin_eth))
+> "Oh My OpenCode Is Actually Insane" - [YouTube - Darren Builds AI](https://www.youtube.com/watch?v=G_Snfh2M41M)
+>
+> "Isn't the name Sisyphus beautiful by itself?" — Sigrid ([@sigridjin_eth](https://x.com/sigridjin_eth))
 
 ---
 
@@ -152,6 +159,12 @@ Hand this doc to an agent and let them set it up.
   - Ask why it's good, why it's not just another boilerplate setup, what actually gets better.
   - If you're an LLM agent, explain to the user what becomes possible right now with this project.
 
+### 🪄 The Magic Word: `ultrawork`
+
+**Don't want to read all this? Just include `ultrawork` (or `ulw`) in your prompt.**
+
+That's it. All the features we provide will work like magic—parallel agents, background tasks, deep exploration, and relentless execution until completion. The agent figures out the rest automatically.
+
 ### For Those Who Want to Read: Meet Sisyphus
 
 ![Meet Sisyphus](.github/assets/sisyphus.png)
@@ -204,7 +217,11 @@ Run the interactive installer:
 
 ```bash
 bunx oh-my-opencode install
+# or use npx if bunx doesn't work
+npx oh-my-opencode install
 ```
+
+> **Note for Ubuntu/Debian users**: If you installed Bun via Snap (`/snap/bin/bun`), `bunx` will fail with "script not found" due to Snap's sandboxing. Either use `npx` instead, or reinstall Bun via the official installer: `curl -fsSL https://bun.sh/install | bash`
 
 Follow the prompts to configure your Claude, ChatGPT, and Gemini subscriptions. After installation, authenticate your providers as instructed.
 
@@ -577,6 +594,26 @@ Instead of the agent reading massive files and bloating context, it internally l
 #### I Removed Their Blockers
 - Replaces built-in grep and glob tools. Default implementation has no timeout—can hang forever.
 
+#### Skill-Embedded MCP Support
+
+Skills can now bring their own MCP servers. Define MCP configurations directly in skill frontmatter or via `mcp.json` files:
+
+```yaml
+---
+description: Browser automation skill
+mcp:
+  playwright:
+    command: npx
+    args: ["-y", "@anthropic-ai/mcp-playwright"]
+---
+```
+
+When you load a skill with embedded MCP, its tools become available automatically. The `skill_mcp` tool lets you invoke these MCP operations with full schema discovery.
+
+**Built-in Skills:**
+- **playwright**: Browser automation, web scraping, testing, and screenshots out of the box
+
+Disable built-in skills via `disabled_skills: ["playwright"]` in your config.
 
 ### Goodbye Claude Code. Hello Oh My OpenCode.
 
@@ -846,12 +883,28 @@ Or disable via `disabled_agents` in `~/.config/opencode/oh-my-opencode.json` or 
 
 Available agents: `oracle`, `librarian`, `explore`, `frontend-ui-ux-engineer`, `document-writer`, `multimodal-looker`
 
+### Built-in Skills
+
+Oh My OpenCode includes built-in skills that provide additional capabilities:
+
+- **playwright**: Browser automation with Playwright MCP. Use for web scraping, testing, screenshots, and browser interactions.
+
+Disable built-in skills via `disabled_skills` in `~/.config/opencode/oh-my-opencode.json` or `.opencode/oh-my-opencode.json`:
+
+```json
+{
+  "disabled_skills": ["playwright"]
+}
+```
+
+Available built-in skills: `playwright`
+
 ### Sisyphus Agent
 
 When enabled (default), Sisyphus provides a powerful orchestrator with optional specialized agents:
 
 - **Sisyphus**: Primary orchestrator agent (Claude Opus 4.5)
-- **Builder-Sisyphus**: OpenCode's default build agent, renamed due to SDK limitations (disabled by default)
+- **OpenCode-Builder**: OpenCode's default build agent, renamed due to SDK limitations (disabled by default)
 - **Planner-Sisyphus**: OpenCode's default plan agent, renamed due to SDK limitations (enabled by default)
 
 **Configuration Options:**
@@ -867,7 +920,7 @@ When enabled (default), Sisyphus provides a powerful orchestrator with optional 
 }
 ```
 
-**Example: Enable Builder-Sisyphus:**
+**Example: Enable OpenCode-Builder:**
 
 ```json
 {
@@ -877,7 +930,7 @@ When enabled (default), Sisyphus provides a powerful orchestrator with optional 
 }
 ```
 
-This enables Builder-Sisyphus agent alongside Sisyphus. The default build agent is always demoted to subagent mode when Sisyphus is enabled.
+This enables OpenCode-Builder agent alongside Sisyphus. The default build agent is always demoted to subagent mode when Sisyphus is enabled.
 
 **Example: Disable all Sisyphus orchestration:**
 
@@ -898,7 +951,7 @@ You can also customize Sisyphus agents like other agents:
       "model": "anthropic/claude-sonnet-4",
       "temperature": 0.3
     },
-    "Builder-Sisyphus": {
+    "OpenCode-Builder": {
       "model": "anthropic/claude-opus-4"
     },
     "Planner-Sisyphus": {
@@ -911,7 +964,7 @@ You can also customize Sisyphus agents like other agents:
 | Option                      | Default | Description                                                                                                                                         |
 | --------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `disabled`                  | `false` | When `true`, disables all Sisyphus orchestration and restores original build/plan as primary.                                                       |
-| `default_builder_enabled`   | `false` | When `true`, enables Builder-Sisyphus agent (same as OpenCode build, renamed due to SDK limitations). Disabled by default.                         |
+| `default_builder_enabled`   | `false` | When `true`, enables OpenCode-Builder agent (same as OpenCode build, renamed due to SDK limitations). Disabled by default.                         |
 | `planner_enabled`           | `true`  | When `true`, enables Planner-Sisyphus agent (same as OpenCode plan, renamed due to SDK limitations). Enabled by default.                           |
 | `replace_plan`              | `true`  | When `true`, demotes default plan agent to subagent mode. Set to `false` to keep both Planner-Sisyphus and default plan available.                 |
 
@@ -1050,5 +1103,8 @@ I have no affiliation with any project or model mentioned here. This is purely p
 - **Numman Ali** [GitHub](https://github.com/numman-ali) [X](https://x.com/nummanali)
   - The first sponsor
 - **Aaron Iker** [GitHub](https://github.com/aaroniker) [X](https://x.com/aaroniker)
+- **Suyeol Jeon (devxoul)** [GitHub](https://github.com/devxoul)
+  - The person who launched my career and inspired me deeply on how to build great agentic workflows. I learned so much about designing great systems to build great teams, and those lessons were instrumental in creating this harness.
+- **Hyerin Won (devwon)** [GitHub](https://github.com/devwon)
 
 *Special thanks to [@junhoyeo](https://github.com/junhoyeo) for this amazing hero image.*

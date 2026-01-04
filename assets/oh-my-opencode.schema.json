@@ -34,6 +34,15 @@
         ]
       }
     },
+    "disabled_skills": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "playwright"
+        ]
+      }
+    },
     "disabled_hooks": {
       "type": "array",
       "items": {
@@ -64,7 +73,9 @@
           "ralph-loop",
           "preemptive-compaction",
           "compaction-context-injector",
-          "claude-code-hooks"
+          "claude-code-hooks",
+          "auto-slash-command",
+          "edit-error-recovery"
         ]
       }
     },

@@ -2,9 +2,12 @@
 >
 > *「私はエージェントが生成したコードと人間が書いたコードを区別できない、しかしはるかに多くのことを達成できる世界を作り、ソフトウェア革命を起こすことを目指しています。私はこの旅に個人的な時間、情熱、そして資金を注ぎ込んできましたし、これからもそうし続けます。」*
 >
+> [![The Orchestrator is coming](./.github/assets/orchestrator-sisyphus.png)](https://x.com/justsisyphus/status/2006250634354548963)
+> > **オーケストレーターが来ます。今週中に。[Xで通知を受け取る](https://x.com/justsisyphus/status/2006250634354548963)**
+>
 > 一緒に歩みましょう！
 >
-> | [<img alt="Discord link" src="https://img.shields.io/discord/1452487457085063218?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square" width="156px" />](https://discord.gg/PWpXmbhF) | [Discordコミュニティ](https://discord.gg/PWpXmbhF)に参加して、コントリビューターや`oh-my-opencode`仲間とつながりましょう。 |
+> | [<img alt="Discord link" src="https://img.shields.io/discord/1452487457085063218?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square" width="156px" />](https://discord.gg/PUwSMR9XNk) | [Discordコミュニティ](https://discord.gg/PUwSMR9XNk)に参加して、コントリビューターや`oh-my-opencode`仲間とつながりましょう。 |
 > | :-----| :----- |
 > | [<img alt="X link" src="https://img.shields.io/badge/Follow-%40justsisyphus-00CED1?style=flat-square&logo=x&labelColor=black" width="156px" />](https://x.com/justsisyphus) | `oh-my-opencode`に関するニュースは私のXアカウントで投稿していましたが、無実の罪で凍結されたため、<br />[@justsisyphus](https://x.com/justsisyphus)が代わりに更新を投稿しています。 |
 > | [<img alt="Sponsor" src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=flat-square&logo=github-sponsors&labelColor=black" width="156px" />](https://github.com/sponsors/code-yeongyu) | [スポンサーになって](https://github.com/sponsors/code-yeongyu) `oh-my-opencode` の開発を応援してください。皆さまのご支援がこのプロジェクトを成長させます。 |
@@ -46,6 +49,11 @@
 
 > "Oh My Opencodeを使って、たった1日で8000個のeslint警告を解消しました" — [Jacob Ferrari](https://x.com/jacobferrari_/status/2003258761952289061)
 
+> "Ohmyopencodeとralph loopを使って、一晩で45,000行のtauriアプリをSaaSウェブアプリに変換しました。インタビュープロンプトから始めて、質問に対する評価と推奨を求めました。作業する様子を見ているのは驚きでしたし、朝起きたらほぼ完成したウェブサイトがありました！" - [James Hargis](https://x.com/hargabyte/status/2007299688261882202)
+
+> "今週末はopen code、oh my opencode、supermemoryでマインクラフト/ソウルライクな何かを作る実験をしています。"
+> "昼食後の散歩に行く間に、しゃがみアニメーションを追加するよう頼みました。[動画]" - [MagiMetal](https://x.com/MagiMetal/status/2005374704178373023)
+
 > "これをコアに取り入れて彼を採用すべきです。マジで。本当に、本当に、本当に良いです" — Henning Kilset
 
 > "@yeon_gyu_kimを説得できるなら雇うべきです。彼はopencodeに革命を起こしました" — [mysticaltech](https://x.com/mysticaltech/status/2001858758608376079)
@@ -55,6 +63,8 @@
 > "oh-my-opencodeを使ってください、もう戻れませんよ" — [d0t3ch](https://x.com/d0t3ch/status/2001685618200580503)
 
 > "Oh My Opencodeは頂点に立っています、敵はいません" — [RyanOnThePath](https://x.com/RyanOnThePath/status/2001438321252118548)
+
+> "Oh My OpenCode Is Actually Insane" - [YouTube - Darren Builds AI](https://www.youtube.com/watch?v=G_Snfh2M41M)
 
 > "シジフォスという名前自体が美しいじゃないですか?" — Sigrid ([@sigridjin_eth](https://x.com/sigridjin_eth))
 
@@ -70,6 +80,19 @@
   - [インストール](#インストール)
     - [人間の方へ](#人間の方へ)
     - [LLM エージェントの方へ](#llm-エージェントの方へ)
+    - [ステップ 0: サブスクリプション情報を確認](#ステップ-0-サブスクリプション情報を確認)
+    - [ステップ 1: OpenCode インストール確認](#ステップ-1-opencode-インストール確認)
+    - [ステップ 2: インストーラーを実行](#ステップ-2-インストーラーを実行)
+    - [ステップ 3: 設定確認](#ステップ-3-設定確認)
+    - [ステップ 4: 認証情報の設定](#ステップ-4-認証情報の設定)
+      - [4.1 Anthropic (Claude)](#41-anthropic-claude)
+      - [4.2 Google Gemini (Antigravity OAuth)](#42-google-gemini-antigravity-oauth)
+      - [4.3 OpenAI (ChatGPT Plus/Pro)](#43-openai-chatgpt-pluspro)
+    - [⚠️ 注意](#️-注意)
+    - [セットアップの確認](#セットアップの確認)
+    - [ユーザーに「おめでとうございます！🎉」と伝える](#ユーザーにおめでとうございますと伝える)
+    - [複雑すぎますか？](#複雑すぎますか)
+  - [アンインストール](#アンインストール)
   - [機能](#機能)
     - [Agents: あなたの新しいチームメイト](#agents-あなたの新しいチームメイト)
     - [バックグラウンドエージェント: 本当のチームのように働く](#バックグラウンドエージェント-本当のチームのように働く)
@@ -127,6 +150,12 @@ Windows から Linux に初めて乗り換えた時のこと、自分の思い�
 - **ただこのリンクを Claude Code / AmpCode / Factory Droid / Cursor に貼り付けて、説明を求めてください。**
   - なぜこれが良いのか、単なるボイラープレートではないのか、具体的に何が良くなるのか聞いてみてください。
   - もしあなたが LLM エージェントなら、このプロジェクトによって今すぐ何が可能になるのか、ユーザーに説明してください。
+
+### 🪄 魔法の言葉：`ultrawork`
+
+**これ全部読みたくない？プロンプトに `ultrawork`（または `ulw`）を入れるだけでOK。**
+
+それだけです。私たちが提供するすべての機能が魔法のように動作します—並列エージェント、バックグラウンドタスク、深い探索、そして完了するまで止まらない実行。エージェントが自動的にすべてを処理します。
 
 ### 読みたい方のために：シジフォスに会う
 
@@ -223,7 +252,11 @@ OpenCode がインストールされていない場合は、[OpenCode インス�
 
 ```bash
 bunx oh-my-opencode install --no-tui --claude=<yes|no|max20> --chatgpt=<yes|no> --gemini=<yes|no>
+# bunx が動作しない場合は npx を使用
+npx oh-my-opencode install --no-tui --claude=<yes|no|max20> --chatgpt=<yes|no> --gemini=<yes|no>
 ```
+
+> **Ubuntu/Debian ユーザーへの注意**: Snap で Bun をインストールした場合 (`/snap/bin/bun`)、Snap のサンドボックス化により `bunx` が「script not found」エラーで失敗します。代わりに `npx` を使用するか、公式インストーラーで Bun を再インストールしてください: `curl -fsSL https://bun.sh/install | bash`
 
 **例：**
 - すべてのサブスクリプション + max20: `bunx oh-my-opencode install --no-tui --claude=max20 --chatgpt=yes --gemini=yes`
@@ -816,7 +849,7 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
 有効時（デフォルト）、Sisyphus はオプションの特殊エージェントを備えた強力なオーケストレーターを提供します：
 
 - **Sisyphus**: プライマリオーケストレーターエージェント (Claude Opus 4.5)
-- **Builder-Sisyphus**: OpenCode のデフォルトビルドエージェント（SDK 制限により名前変更、デフォルトで無効）
+- **OpenCode-Builder**: OpenCode のデフォルトビルドエージェント（SDK 制限により名前変更、デフォルトで無効）
 - **Planner-Sisyphus**: OpenCode のデフォルトプランエージェント（SDK 制限により名前変更、デフォルトで有効）
 
 **設定オプション：**
@@ -832,7 +865,7 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
 }
 ```
 
-**例：Builder-Sisyphus を有効化：**
+**例：OpenCode-Builder を有効化：**
 
 ```json
 {
@@ -842,7 +875,7 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
 }
 ```
 
-これにより、Sisyphus と並行して Builder-Sisyphus エージェントを有効化できます。Sisyphus が有効な場合、デフォルトのビルドエージェントは常にサブエージェントモードに降格されます。
+これにより、Sisyphus と並行して OpenCode-Builder エージェントを有効化できます。Sisyphus が有効な場合、デフォルトのビルドエージェントは常にサブエージェントモードに降格されます。
 
 **例：すべての Sisyphus オーケストレーションを無効化：**
 
@@ -863,7 +896,7 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
       "model": "anthropic/claude-sonnet-4",
       "temperature": 0.3
     },
-    "Builder-Sisyphus": {
+    "OpenCode-Builder": {
       "model": "anthropic/claude-opus-4"
     },
     "Planner-Sisyphus": {
@@ -876,7 +909,7 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
 | オプション                  | デフォルト | 説明                                                                                                                                                         |
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `disabled`                  | `false` | `true` の場合、すべての Sisyphus オーケストレーションを無効化し、元の build/plan をプライマリとして復元します。                                                                       |
-| `default_builder_enabled`   | `false` | `true` の場合、Builder-Sisyphus エージェントを有効化します（OpenCode build と同じ、SDK 制限により名前変更）。デフォルトでは無効です。                                                   |
+| `default_builder_enabled`   | `false` | `true` の場合、OpenCode-Builder エージェントを有効化します（OpenCode build と同じ、SDK 制限により名前変更）。デフォルトでは無効です。                                                   |
 | `planner_enabled`           | `true`  | `true` の場合、Planner-Sisyphus エージェントを有効化します（OpenCode plan と同じ、SDK 制限により名前変更）。デフォルトで有効です。                                                       |
 | `replace_plan`              | `true`  | `true` の場合、デフォルトのプランエージェントをサブエージェントモードに降格させます。`false` に設定すると、Planner-Sisyphus とデフォルトのプランの両方を利用できます。                                |
 
@@ -1015,5 +1048,8 @@ OpenCode が Debian / ArchLinux だとしたら、Oh My OpenCode は Ubuntu / [O
 - **Numman Ali** [GitHub](https://github.com/numman-ali) [X](https://x.com/nummanali)
   - 最初のスポンサー
 - **Aaron Iker** [GitHub](https://github.com/aaroniker) [X](https://x.com/aaroniker)
+- **Suyeol Jeon (devxoul)** [GitHub](https://github.com/devxoul)
+  - 私のキャリアをスタートさせてくださった方であり、優れたエージェンティックワークフローをどのように構築できるかについて多大なインスピレーションを与えてくださった方です。優れたチームを作るために優れたシステムをどう設計すべきか多くのことを学び、その学びがこのharnessを作る上で大きな助けとなりました。
+- **Hyerin Won (devwon)** [GitHub](https://github.com/devwon)
 
 *素晴らしいヒーロー画像を作成してくれた [@junhoyeo](https://github.com/junhoyeo) に感謝します*
