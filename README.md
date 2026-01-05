@@ -10,7 +10,6 @@
 > | [<img alt="Discord link" src="https://img.shields.io/discord/1452487457085063218?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square" width="156px" />](https://discord.gg/PUwSMR9XNk) | Join our [Discord community](https://discord.gg/PUwSMR9XNk) to connect with contributors and fellow `oh-my-opencode` users. |
 > | :-----| :----- |
 > | [<img alt="X link" src="https://img.shields.io/badge/Follow-%40justsisyphus-00CED1?style=flat-square&logo=x&labelColor=black" width="156px" />](https://x.com/justsisyphus) | News and updates for `oh-my-opencode` used to be posted on my X account. <br /> Since it was suspended mistakenly, [@justsisyphus](https://x.com/justsisyphus) now posts updates on my behalf. |
-> | [<img alt="Sponsor" src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=flat-square&logo=github-sponsors&labelColor=black" width="156px" />](https://github.com/sponsors/code-yeongyu) | Support the development of `oh-my-opencode` by [becoming a sponsor](https://github.com/sponsors/code-yeongyu). Your contribution helps keep this project alive and growing. |
 
 <!-- <CENTERED SECTION FOR GITHUB DISPLAY> -->
 
@@ -583,7 +582,6 @@ These tools enable agents to reference previous conversations and maintain conti
     ```
 - **Online**: Project rules aren't everything. Built-in MCPs for extended capabilities:
   - **context7**: Official documentation lookup
-  - **websearch_exa**: Real-time web search
   - **grep_app**: Ultra-fast code search across public GitHub repos (great for finding implementation examples)
 
 #### Be Multimodal. Save Tokens.
@@ -695,7 +693,7 @@ Disable specific Claude Code compatibility features with the `claude_code` confi
 
 | Toggle     | When `false`, stops loading from...                                                   | Unaffected                                            |
 | ---------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `mcp`      | `~/.claude/.mcp.json`, `./.mcp.json`, `./.claude/.mcp.json`                           | Built-in MCP (context7, websearch_exa)                |
+| `mcp`      | `~/.claude/.mcp.json`, `./.mcp.json`, `./.claude/.mcp.json`                           | Built-in MCP (context7, grep_app)                     |
 | `commands` | `~/.claude/commands/*.md`, `./.claude/commands/*.md`                                  | `~/.config/opencode/command/`, `./.opencode/command/` |
 | `skills`   | `~/.claude/skills/*/SKILL.md`, `./.claude/skills/*/SKILL.md`                          | -                                                     |
 | `agents`   | `~/.claude/agents/*.md`, `./.claude/agents/*.md`                                      | Built-in agents (oracle, librarian, etc.)             |
@@ -984,17 +982,16 @@ Available hooks: `todo-continuation-enforcer`, `context-window-monitor`, `sessio
 
 ### MCPs
 
-Context7, Exa, and grep.app MCP enabled by default.
+Context7 and grep.app MCP enabled by default.
 
 - **context7**: Fetches up-to-date official documentation for libraries
-- **websearch_exa**: Real-time web search powered by Exa AI
 - **grep_app**: Ultra-fast code search across millions of public GitHub repositories via [grep.app](https://grep.app)
 
 Don't want them? Disable via `disabled_mcps` in `~/.config/opencode/oh-my-opencode.json` or `.opencode/oh-my-opencode.json`:
 
 ```json
 {
-  "disabled_mcps": ["context7", "websearch_exa", "grep_app"]
+  "disabled_mcps": ["context7", "grep_app"]
 }
 ```
 

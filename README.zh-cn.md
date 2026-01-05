@@ -10,7 +10,6 @@
 > | [<img alt="Discord link" src="https://img.shields.io/discord/1452487457085063218?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square" width="156px" />](https://discord.gg/PUwSMR9XNk) | 加入我们的 [Discord 社区](https://discord.gg/PUwSMR9XNk)，和贡献者们、`oh-my-opencode` 用户们一起交流。 |
 > | :-----| :----- |
 > | [<img alt="X link" src="https://img.shields.io/badge/Follow-%40justsisyphus-00CED1?style=flat-square&logo=x&labelColor=black" width="156px" />](https://x.com/justsisyphus) | `oh-my-opencode` 的消息之前在我的 X 账号发，但账号被无辜封了，<br />现在 [@justsisyphus](https://x.com/justsisyphus) 替我发更新。 |
-> | [<img alt="Sponsor" src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=flat-square&logo=github-sponsors&labelColor=black" width="156px" />](https://github.com/sponsors/code-yeongyu) | [成为赞助者](https://github.com/sponsors/code-yeongyu)，支持 `oh-my-opencode` 的开发。您的支持让这个项目持续成长。 |
 
 <!-- <CENTERED SECTION FOR GITHUB DISPLAY> -->
 
@@ -568,7 +567,6 @@ OhMyOpenCode 让这些成为可能。
     ```
 - **在线资源**：项目里的规矩不够用？内置 MCP 来凑：
   - **context7**：查最新的官方文档
-  - **websearch_exa**：Exa AI 实时搜网
   - **grep_app**：用 [grep.app](https://grep.app) 在几百万个 GitHub 仓库里秒搜代码（找抄作业的例子神器）
 
 #### 多模态全开，Token 省着用
@@ -660,7 +658,7 @@ Oh My OpenCode 会扫这些地方：
 
 | 开关       | 设为 `false` 就停用的路径                                                             | 不受影响的                                            |
 | ---------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `mcp`      | `~/.claude/.mcp.json`, `./.mcp.json`, `./.claude/.mcp.json`                           | 内置 MCP（context7、websearch_exa）                   |
+| `mcp`      | `~/.claude/.mcp.json`, `./.mcp.json`, `./.claude/.mcp.json`                           | 内置 MCP（context7、grep_app）                        |
 | `commands` | `~/.claude/commands/*.md`, `./.claude/commands/*.md`                                  | `~/.config/opencode/command/`, `./.opencode/command/` |
 | `skills`   | `~/.claude/skills/*/SKILL.md`, `./.claude/skills/*/SKILL.md`                          | -                                                     |
 | `agents`   | `~/.claude/agents/*.md`, `./.claude/agents/*.md`                                      | 内置 Agent（oracle、librarian 等）                    |
@@ -933,17 +931,16 @@ Sisyphus Agent 也能自定义：
 
 ### MCPs
 
-默认送你 Context7、Exa 和 grep.app MCP。
+默认送你 Context7 和 grep.app MCP。
 
 - **context7**：查最新的官方文档
-- **websearch_exa**：Exa AI 实时搜网
 - **grep_app**：[grep.app](https://grep.app) 极速搜 GitHub 代码
 
 不想要？在 `~/.config/opencode/oh-my-opencode.json` 或 `.opencode/oh-my-opencode.json` 的 `disabled_mcps` 里关掉：
 
 ```json
 {
-  "disabled_mcps": ["context7", "websearch_exa", "grep_app"]
+  "disabled_mcps": ["context7", "grep_app"]
 }
 ```
 

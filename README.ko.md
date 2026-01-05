@@ -10,7 +10,6 @@
 > | [<img alt="Discord link" src="https://img.shields.io/discord/1452487457085063218?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square" width="156px" />](https://discord.gg/PUwSMR9XNk) | [Discord 커뮤니티](https://discord.gg/PUwSMR9XNk)에서 기여자들과 `oh-my-opencode` 사용자들을 만나보세요. |
 > | :-----| :----- |
 > | [<img alt="X link" src="https://img.shields.io/badge/Follow-%40justsisyphus-00CED1?style=flat-square&logo=x&labelColor=black" width="156px" />](https://x.com/justsisyphus) | `oh-my-opencode` 관련 소식은 제 X 계정에서 올렸었는데, 억울하게 정지당해서 <br />[@justsisyphus](https://x.com/justsisyphus)가 대신 소식을 전하고 있습니다. |
-> | [<img alt="Sponsor" src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=flat-square&logo=github-sponsors&labelColor=black" width="156px" />](https://github.com/sponsors/code-yeongyu) | [스폰서가 되어](https://github.com/sponsors/code-yeongyu) `oh-my-opencode` 개발을 응원해주세요. 여러분의 후원이 이 프로젝트를 계속 성장시킵니다. |
 
 <!-- <CENTERED SECTION FOR GITHUB DISPLAY> -->
 
@@ -557,7 +556,6 @@ OpenCode 세션 히스토리를 탐색하고 검색하기 위한 도구들입니
     ```
 - **Online**: 프로젝트 규칙이 전부는 아니겠죠. 확장 기능을 위한 내장 MCP를 제공합니다:
   - **context7**: 공식 문서 조회
-  - **websearch_exa**: 실시간 웹 검색
   - **grep_app**: 공개 GitHub 저장소에서 초고속 코드 검색 (구현 예제 찾기에 최적)
 
 #### 멀티모달을 다 활용하면서, 토큰은 덜 쓰도록.
@@ -649,7 +647,7 @@ Oh My OpenCode는 다음 위치의 훅을 읽고 실행합니다:
 
 | 토글       | `false`일 때 로딩 비활성화 경로                                                       | 영향 받지 않음                                        |
 | ---------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `mcp`      | `~/.claude/.mcp.json`, `./.mcp.json`, `./.claude/.mcp.json`                           | 내장 MCP (context7, websearch_exa)                    |
+| `mcp`      | `~/.claude/.mcp.json`, `./.mcp.json`, `./.claude/.mcp.json`                           | 내장 MCP (context7, grep_app)                         |
 | `commands` | `~/.claude/commands/*.md`, `./.claude/commands/*.md`                                  | `~/.config/opencode/command/`, `./.opencode/command/` |
 | `skills`   | `~/.claude/skills/*/SKILL.md`, `./.claude/skills/*/SKILL.md`                          | -                                                     |
 | `agents`   | `~/.claude/agents/*.md`, `./.claude/agents/*.md`                                      | 내장 에이전트 (oracle, librarian 등)                  |
@@ -922,17 +920,16 @@ Schema 자동 완성이 지원됩니다:
 
 ### MCPs
 
-기본적으로 Context7, Exa, grep.app MCP 를 지원합니다.
+기본적으로 Context7, grep.app MCP 를 지원합니다.
 
 - **context7**: 라이브러리의 최신 공식 문서를 가져옵니다
-- **websearch_exa**: Exa AI 기반 실시간 웹 검색
 - **grep_app**: [grep.app](https://grep.app)을 통해 수백만 개의 공개 GitHub 저장소에서 초고속 코드 검색
 
 이것이 마음에 들지 않는다면, ~/.config/opencode/oh-my-opencode.json 혹은 .opencode/oh-my-opencode.json 의 `disabled_mcps` 를 사용하여 비활성화할 수 있습니다:
 
 ```json
 {
-  "disabled_mcps": ["context7", "websearch_exa", "grep_app"]
+  "disabled_mcps": ["context7", "grep_app"]
 }
 ```
 
