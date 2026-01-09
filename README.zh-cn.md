@@ -1,9 +1,12 @@
 > [!NOTE]
 >
-> *"我致力于引发一场软件革命，创造一个AI生成的代码与人类代码无法区分、却能实现更多的世界。我已经在这段旅程中投入了个人时间、热情和资金，并将继续这样做。"*
+> [![Sisyphus Labs — Sisyphus is the agent that codes like your team.](./.github/assets/sisyphuslabs.png?v=2)](https://sisyphuslabs.ai)
+> > **我们正在构建Sisyphus的完全产品化版本，定义前沿代理的未来。<br />[点击此处](https://sisyphuslabs.ai)加入候补名单。**
+
+> [!TIP]
 >
-> [![The Orchestrator is coming](./.github/assets/orchestrator-sisyphus.png)](https://x.com/justsisyphus/status/2006250634354548963)
-> > **编排器即将到来。就在本周。[在X上获取通知](https://x.com/justsisyphus/status/2006250634354548963)**
+> [![The Orchestrator is now available in beta.](./.github/assets/orchestrator-sisyphus.png?v=3)](https://github.com/code-yeongyu/oh-my-opencode/releases/tag/v3.0.0-beta.1)
+> > **编排器现已推出测试版。使用`oh-my-opencode@3.0.0-beta.1`来安装。**
 >
 > 与我们同行！
 >
@@ -306,7 +309,7 @@ opencode auth login
 {
   "plugin": [
     "oh-my-opencode",
-    "opencode-antigravity-auth@1.2.7"
+    "opencode-antigravity-auth@1.2.8"
   ]
 }
 ```
@@ -863,7 +866,8 @@ Agent 爽了，你自然也爽。但我还想直接让你爽。
 
 - **Sisyphus**：主编排 Agent（Claude Opus 4.5）
 - **OpenCode-Builder**：OpenCode 默认构建 Agent（因 SDK 限制仅改名，默认禁用）
-- **Planner-Sisyphus**：OpenCode 默认计划 Agent（因 SDK 限制仅改名，默认启用）
+- **Prometheus (Planner)**：OpenCode 默认计划 Agent + work-planner 方法论（默认启用）
+- **Metis (Plan Consultant)**：识别隐藏需求和 AI 失败点的预规划分析 Agent
 
 **配置选项：**
 
@@ -912,8 +916,11 @@ Sisyphus Agent 也能自定义：
     "OpenCode-Builder": {
       "model": "anthropic/claude-opus-4"
     },
-    "Planner-Sisyphus": {
+    "Prometheus (Planner)": {
       "model": "openai/gpt-5.2"
+    },
+    "Metis (Plan Consultant)": {
+      "model": "anthropic/claude-sonnet-4-5"
     }
   }
 }
@@ -923,8 +930,8 @@ Sisyphus Agent 也能自定义：
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `disabled`                  | `false` | 设为 `true` 就禁用所有 Sisyphus 编排，恢复原来的 build/plan。                                                                                              |
 | `default_builder_enabled`   | `false` | 设为 `true` 就启用 OpenCode-Builder Agent（与 OpenCode build 相同，因 SDK 限制仅改名）。默认禁用。                                                           |
-| `planner_enabled`           | `true`  | 设为 `true` 就启用 Planner-Sisyphus Agent（与 OpenCode plan 相同，因 SDK 限制仅改名）。默认启用。                                                             |
-| `replace_plan`              | `true`  | 设为 `true` 就把默认计划 Agent 降级为子 Agent 模式。设为 `false` 可以同时保留 Planner-Sisyphus 和默认计划。                                                        |
+| `planner_enabled`           | `true`  | 设为 `true` 就启用 Prometheus (Planner) Agent（含 work-planner 方法论）。默认启用。                                                                         |
+| `replace_plan`              | `true`  | 设为 `true` 就把默认计划 Agent 降级为子 Agent 模式。设为 `false` 可以同时保留 Prometheus (Planner) 和默认计划。                                                      |
 
 ### Background Tasks（后台任务）
 

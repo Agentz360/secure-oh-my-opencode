@@ -1,9 +1,12 @@
 > [!NOTE]
 >
-> *「私はエージェントが生成したコードと人間が書いたコードを区別できない、しかしはるかに多くのことを達成できる世界を作り、ソフトウェア革命を起こすことを目指しています。私はこの旅に個人的な時間、情熱、そして資金を注ぎ込んできましたし、これからもそうし続けます。」*
+> [![Sisyphus Labs — Sisyphus is the agent that codes like your team.](./.github/assets/sisyphuslabs.png?v=2)](https://sisyphuslabs.ai)
+> > **Sisyphusの完全製品化バージョンを構築中です。フロンティアエージェントの未来を定義します。<br />[こちら](https://sisyphuslabs.ai)からウェイトリストに参加してください。**
+
+> [!TIP]
 >
-> [![The Orchestrator is coming](./.github/assets/orchestrator-sisyphus.png)](https://x.com/justsisyphus/status/2006250634354548963)
-> > **オーケストレーターが来ます。今週中に。[Xで通知を受け取る](https://x.com/justsisyphus/status/2006250634354548963)**
+> [![The Orchestrator is now available in beta.](./.github/assets/orchestrator-sisyphus.png?v=3)](https://github.com/code-yeongyu/oh-my-opencode/releases/tag/v3.0.0-beta.1)
+> > **オーケストレーターがベータ版で利用可能になりました。`oh-my-opencode@3.0.0-beta.1`を使用してインストールしてください。**
 >
 > 一緒に歩みましょう！
 >
@@ -301,7 +304,7 @@ opencode auth login
 {
   "plugin": [
     "oh-my-opencode",
-    "opencode-antigravity-auth@1.2.7"
+    "opencode-antigravity-auth@1.2.8"
   ]
 }
 ```
@@ -862,7 +865,8 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
 
 - **Sisyphus**: プライマリオーケストレーターエージェント (Claude Opus 4.5)
 - **OpenCode-Builder**: OpenCode のデフォルトビルドエージェント（SDK 制限により名前変更、デフォルトで無効）
-- **Planner-Sisyphus**: OpenCode のデフォルトプランエージェント（SDK 制限により名前変更、デフォルトで有効）
+- **Prometheus (Planner)**: OpenCode のデフォルトプランエージェント + work-planner 方法論（デフォルトで有効）
+- **Metis (Plan Consultant)**: 隠された要件と AI 失敗ポイントを特定する事前計画分析エージェント
 
 **設定オプション：**
 
@@ -911,8 +915,11 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
     "OpenCode-Builder": {
       "model": "anthropic/claude-opus-4"
     },
-    "Planner-Sisyphus": {
+    "Prometheus (Planner)": {
       "model": "openai/gpt-5.2"
+    },
+    "Metis (Plan Consultant)": {
+      "model": "anthropic/claude-sonnet-4-5"
     }
   }
 }
@@ -922,8 +929,8 @@ Oh My OpenCode は以下の場所からフックを読み込んで実行しま�
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `disabled`                  | `false` | `true` の場合、すべての Sisyphus オーケストレーションを無効化し、元の build/plan をプライマリとして復元します。                                                                       |
 | `default_builder_enabled`   | `false` | `true` の場合、OpenCode-Builder エージェントを有効化します（OpenCode build と同じ、SDK 制限により名前変更）。デフォルトでは無効です。                                                   |
-| `planner_enabled`           | `true`  | `true` の場合、Planner-Sisyphus エージェントを有効化します（OpenCode plan と同じ、SDK 制限により名前変更）。デフォルトで有効です。                                                       |
-| `replace_plan`              | `true`  | `true` の場合、デフォルトのプランエージェントをサブエージェントモードに降格させます。`false` に設定すると、Planner-Sisyphus とデフォルトのプランの両方を利用できます。                                |
+| `planner_enabled`           | `true`  | `true` の場合、Prometheus (Planner) エージェントを有効化します（work-planner 方法論を含む）。デフォルトで有効です。                                                                   |
+| `replace_plan`              | `true`  | `true` の場合、デフォルトのプランエージェントをサブエージェントモードに降格させます。`false` に設定すると、Prometheus (Planner) とデフォルトのプランの両方を利用できます。                             |
 
 ### Background Tasks
 
