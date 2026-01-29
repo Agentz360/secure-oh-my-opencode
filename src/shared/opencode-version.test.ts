@@ -1,16 +1,15 @@
-import { describe, test, expect, beforeEach, afterEach, spyOn, mock } from "bun:test"
-import * as childProcess from "child_process"
+import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import {
   parseVersion,
   compareVersions,
   isVersionGte,
   isVersionLt,
   getOpenCodeVersion,
-  supportsNewPermissionSystem,
-  usesLegacyToolsSystem,
+  isOpenCodeVersionAtLeast,
   resetVersionCache,
   setVersionCache,
-  PERMISSION_BREAKING_VERSION,
+  MINIMUM_OPENCODE_VERSION,
+  OPENCODE_NATIVE_AGENTS_INJECTION_VERSION,
 } from "./opencode-version"
 
 describe("opencode-version", () => {
@@ -163,7 +162,7 @@ describe("opencode-version", () => {
     })
   })
 
-  describe("supportsNewPermissionSystem", () => {
+  describe("isOpenCodeVersionAtLeast", () => {
     beforeEach(() => {
       resetVersionCache()
     })
@@ -172,34 +171,34 @@ describe("opencode-version", () => {
       resetVersionCache()
     })
 
-    test("returns true for v1.1.1", () => {
+    test("returns true for exact version", () => {
       // #given version is 1.1.1
       setVersionCache("1.1.1")
 
-      // #when checking permission system support
-      const result = supportsNewPermissionSystem()
+      // #when checking against 1.1.1
+      const result = isOpenCodeVersionAtLeast("1.1.1")
 
       // #then returns true
       expect(result).toBe(true)
     })
 
-    test("returns true for versions above 1.1.1", () => {
-      // #given version is above 1.1.1
+    test("returns true for versions above target", () => {
+      // #given version is above target
       setVersionCache("1.2.0")
 
-      // #when checking
-      const result = supportsNewPermissionSystem()
+      // #when checking against 1.1.1
+      const result = isOpenCodeVersionAtLeast("1.1.1")
 
       // #then returns true
       expect(result).toBe(true)
     })
 
-    test("returns false for versions below 1.1.1", () => {
-      // #given version is below 1.1.1
+    test("returns false for versions below target", () => {
+      // #given version is below target
       setVersionCache("1.1.0")
 
-      // #when checking
-      const result = supportsNewPermissionSystem()
+      // #when checking against 1.1.1
+      const result = isOpenCodeVersionAtLeast("1.1.1")
 
       // #then returns false
       expect(result).toBe(false)
@@ -210,48 +209,58 @@ describe("opencode-version", () => {
       setVersionCache(null)
 
       // #when checking
-      const result = supportsNewPermissionSystem()
+      const result = isOpenCodeVersionAtLeast("1.1.1")
 
       // #then returns true (assume newer version)
       expect(result).toBe(true)
     })
   })
 
-  describe("usesLegacyToolsSystem", () => {
-    beforeEach(() => {
-      resetVersionCache()
-    })
-
-    afterEach(() => {
-      resetVersionCache()
-    })
-
-    test("returns true for versions below 1.1.1", () => {
-      // #given version is below 1.1.1
-      setVersionCache("1.0.150")
-
-      // #when checking
-      const result = usesLegacyToolsSystem()
-
-      // #then returns true
-      expect(result).toBe(true)
-    })
-
-    test("returns false for v1.1.1 and above", () => {
-      // #given version is 1.1.1
-      setVersionCache("1.1.1")
-
-      // #when checking
-      const result = usesLegacyToolsSystem()
-
-      // #then returns false
-      expect(result).toBe(false)
+  describe("MINIMUM_OPENCODE_VERSION", () => {
+    test("is set to 1.1.1", () => {
+      expect(MINIMUM_OPENCODE_VERSION).toBe("1.1.1")
     })
   })
 
-  describe("PERMISSION_BREAKING_VERSION", () => {
-    test("is set to 1.1.1", () => {
-      expect(PERMISSION_BREAKING_VERSION).toBe("1.1.1")
+  describe("OPENCODE_NATIVE_AGENTS_INJECTION_VERSION", () => {
+    test("is set to 1.1.37", () => {
+      // #given the native agents injection version constant
+      // #when exported
+      // #then it should be 1.1.37 (PR #10678)
+      expect(OPENCODE_NATIVE_AGENTS_INJECTION_VERSION).toBe("1.1.37")
+    })
+
+    test("version detection works correctly with native agents version", () => {
+      // #given OpenCode version at or above native agents injection version
+      setVersionCache("1.1.37")
+
+      // #when checking against native agents version
+      const result = isOpenCodeVersionAtLeast(OPENCODE_NATIVE_AGENTS_INJECTION_VERSION)
+
+      // #then returns true (native support available)
+      expect(result).toBe(true)
+    })
+
+    test("version detection returns false for older versions", () => {
+      // #given OpenCode version below native agents injection version
+      setVersionCache("1.1.36")
+
+      // #when checking against native agents version
+      const result = isOpenCodeVersionAtLeast(OPENCODE_NATIVE_AGENTS_INJECTION_VERSION)
+
+      // #then returns false (no native support)
+      expect(result).toBe(false)
+    })
+
+    test("returns true when version detection fails (fail-safe)", () => {
+      // #given version cannot be detected
+      setVersionCache(null)
+
+      // #when checking against native agents version
+      const result = isOpenCodeVersionAtLeast(OPENCODE_NATIVE_AGENTS_INJECTION_VERSION)
+
+      // #then returns true (assume latest, enable native support)
+      expect(result).toBe(true)
     })
   })
 })

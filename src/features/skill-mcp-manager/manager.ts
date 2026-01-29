@@ -1,27 +1,96 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import type { Tool, Resource, Prompt } from "@modelcontextprotocol/sdk/types.js"
 import type { ClaudeCodeMcpServer } from "../claude-code-mcp-loader/types"
 import { expandEnvVarsInObject } from "../claude-code-mcp-loader/env-expander"
+import { McpOAuthProvider } from "../mcp-oauth/provider"
+import { isStepUpRequired, mergeScopes } from "../mcp-oauth/step-up"
 import { createCleanMcpEnvironment } from "./env-cleaner"
 import type { SkillMcpClientInfo, SkillMcpServerContext } from "./types"
 
-interface ManagedClient {
+/**
+ * Connection type for a managed MCP client.
+ * - "stdio": Local process via stdin/stdout
+ * - "http": Remote server via HTTP (Streamable HTTP transport)
+ */
+type ConnectionType = "stdio" | "http"
+
+interface ManagedClientBase {
   client: Client
-  transport: StdioClientTransport
   skillName: string
   lastUsedAt: number
+  connectionType: ConnectionType
+}
+
+interface ManagedStdioClient extends ManagedClientBase {
+  connectionType: "stdio"
+  transport: StdioClientTransport
+}
+
+interface ManagedHttpClient extends ManagedClientBase {
+  connectionType: "http"
+  transport: StreamableHTTPClientTransport
+}
+
+type ManagedClient = ManagedStdioClient | ManagedHttpClient
+
+/**
+ * Determines connection type from MCP server configuration.
+ * Priority: explicit type field > url presence > command presence
+ */
+function getConnectionType(config: ClaudeCodeMcpServer): ConnectionType | null {
+  // Explicit type takes priority
+  if (config.type === "http" || config.type === "sse") {
+    return "http"
+  }
+  if (config.type === "stdio") {
+    return "stdio"
+  }
+
+  // Infer from available fields
+  if (config.url) {
+    return "http"
+  }
+  if (config.command) {
+    return "stdio"
+  }
+
+  return null
 }
 
 export class SkillMcpManager {
   private clients: Map<string, ManagedClient> = new Map()
   private pendingConnections: Map<string, Promise<Client>> = new Map()
+  private authProviders: Map<string, McpOAuthProvider> = new Map()
   private cleanupRegistered = false
   private cleanupInterval: ReturnType<typeof setInterval> | null = null
   private readonly IDLE_TIMEOUT = 5 * 60 * 1000
 
   private getClientKey(info: SkillMcpClientInfo): string {
     return `${info.sessionID}:${info.skillName}:${info.serverName}`
+  }
+
+  /**
+   * Get or create an McpOAuthProvider for a given server URL + oauth config.
+   * Providers are cached by server URL to reuse tokens across reconnections.
+   */
+  private getOrCreateAuthProvider(
+    serverUrl: string,
+    oauth: NonNullable<ClaudeCodeMcpServer["oauth"]>
+  ): McpOAuthProvider {
+    const existing = this.authProviders.get(serverUrl)
+    if (existing) {
+      return existing
+    }
+
+    const provider = new McpOAuthProvider({
+      serverUrl,
+      clientId: oauth.clientId,
+      scopes: oauth.scopes,
+    })
+    this.authProviders.set(serverUrl, provider)
+    return provider
   }
 
   private registerProcessCleanup(): void {
@@ -99,17 +168,147 @@ export class SkillMcpManager {
     info: SkillMcpClientInfo,
     config: ClaudeCodeMcpServer
   ): Promise<Client> {
+    const connectionType = getConnectionType(config)
+
+    if (!connectionType) {
+      throw new Error(
+        `MCP server "${info.serverName}" has no valid connection configuration.\n\n` +
+        `The MCP configuration in skill "${info.skillName}" must specify either:\n` +
+        `  - A URL for HTTP connection (remote MCP server)\n` +
+        `  - A command for stdio connection (local MCP process)\n\n` +
+        `Examples:\n` +
+        `  HTTP:\n` +
+        `    mcp:\n` +
+        `      ${info.serverName}:\n` +
+        `        url: https://mcp.example.com/mcp\n` +
+        `        headers:\n` +
+        `          Authorization: Bearer \${API_KEY}\n\n` +
+        `  Stdio:\n` +
+        `    mcp:\n` +
+        `      ${info.serverName}:\n` +
+        `        command: npx\n` +
+        `        args: [-y, @some/mcp-server]`
+      )
+    }
+
+    if (connectionType === "http") {
+      return this.createHttpClient(info, config)
+    } else {
+      return this.createStdioClient(info, config)
+    }
+  }
+
+  /**
+   * Create an HTTP-based MCP client using StreamableHTTPClientTransport.
+   * Supports remote MCP servers with optional authentication headers.
+   */
+  private async createHttpClient(
+    info: SkillMcpClientInfo,
+    config: ClaudeCodeMcpServer
+  ): Promise<Client> {
+    const key = this.getClientKey(info)
+
+    if (!config.url) {
+      throw new Error(
+        `MCP server "${info.serverName}" is configured for HTTP but missing 'url' field.`
+      )
+    }
+
+    let url: URL
+    try {
+      url = new URL(config.url)
+    } catch {
+      throw new Error(
+        `MCP server "${info.serverName}" has invalid URL: ${config.url}\n\n` +
+        `Expected a valid URL like: https://mcp.example.com/mcp`
+      )
+    }
+
+    this.registerProcessCleanup()
+
+    // Build request init with headers if provided
+    const requestInit: RequestInit = {}
+    if (config.headers && Object.keys(config.headers).length > 0) {
+      requestInit.headers = { ...config.headers }
+    }
+
+    let authProvider: McpOAuthProvider | undefined
+    if (config.oauth) {
+      authProvider = this.getOrCreateAuthProvider(config.url, config.oauth)
+      let tokenData = authProvider.tokens()
+
+      const isExpired = tokenData?.expiresAt != null && tokenData.expiresAt < Math.floor(Date.now() / 1000)
+      if (!tokenData || isExpired) {
+        try {
+          tokenData = await authProvider.login()
+        } catch {
+          // Login failed — proceed without auth header
+        }
+      }
+
+      if (tokenData) {
+        const existingHeaders = (requestInit.headers ?? {}) as Record<string, string>
+        requestInit.headers = {
+          ...existingHeaders,
+          Authorization: `Bearer ${tokenData.accessToken}`,
+        }
+      }
+    }
+
+    const transport = new StreamableHTTPClientTransport(url, {
+      requestInit: Object.keys(requestInit).length > 0 ? requestInit : undefined,
+    })
+
+    const client = new Client(
+      { name: `skill-mcp-${info.skillName}-${info.serverName}`, version: "1.0.0" },
+      { capabilities: {} }
+    )
+
+    try {
+      await client.connect(transport)
+    } catch (error) {
+      try {
+        await transport.close()
+      } catch {
+        // Transport may already be closed
+      }
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(
+        `Failed to connect to MCP server "${info.serverName}".\n\n` +
+        `URL: ${config.url}\n` +
+        `Reason: ${errorMessage}\n\n` +
+        `Hints:\n` +
+        `  - Verify the URL is correct and the server is running\n` +
+        `  - Check if authentication headers are required\n` +
+        `  - Ensure the server supports MCP over HTTP`
+      )
+    }
+
+    const managedClient: ManagedHttpClient = {
+      client,
+      transport,
+      skillName: info.skillName,
+      lastUsedAt: Date.now(),
+      connectionType: "http",
+    }
+    this.clients.set(key, managedClient)
+    this.startCleanupTimer()
+    return client
+  }
+
+  /**
+   * Create a stdio-based MCP client using StdioClientTransport.
+   * Spawns a local process and communicates via stdin/stdout.
+   */
+  private async createStdioClient(
+    info: SkillMcpClientInfo,
+    config: ClaudeCodeMcpServer
+  ): Promise<Client> {
     const key = this.getClientKey(info)
 
     if (!config.command) {
       throw new Error(
-        `MCP server "${info.serverName}" is missing required 'command' field.\n\n` +
-        `The MCP configuration in skill "${info.skillName}" must specify a command to execute.\n\n` +
-        `Example:\n` +
-        `  mcp:\n` +
-        `    ${info.serverName}:\n` +
-        `      command: npx\n` +
-        `      args: [-y, @some/mcp-server]`
+        `MCP server "${info.serverName}" is configured for stdio but missing 'command' field.`
       )
     }
 
@@ -153,7 +352,14 @@ export class SkillMcpManager {
       )
     }
 
-    this.clients.set(key, { client, transport, skillName: info.skillName, lastUsedAt: Date.now() })
+    const managedClient: ManagedStdioClient = {
+      client,
+      transport,
+      skillName: info.skillName,
+      lastUsedAt: Date.now(),
+      connectionType: "stdio",
+    }
+    this.clients.set(key, managedClient)
     this.startCleanupTimer()
     return client
   }
@@ -257,9 +463,10 @@ export class SkillMcpManager {
     name: string,
     args: Record<string, unknown>
   ): Promise<unknown> {
-    const client = await this.getOrCreateClientWithRetry(info, context.config)
-    const result = await client.callTool({ name, arguments: args })
-    return result.content
+    return this.withOperationRetry(info, context.config, async (client) => {
+      const result = await client.callTool({ name, arguments: args })
+      return result.content
+    })
   }
 
   async readResource(
@@ -267,9 +474,10 @@ export class SkillMcpManager {
     context: SkillMcpServerContext,
     uri: string
   ): Promise<unknown> {
-    const client = await this.getOrCreateClientWithRetry(info, context.config)
-    const result = await client.readResource({ uri })
-    return result.contents
+    return this.withOperationRetry(info, context.config, async (client) => {
+      const result = await client.readResource({ uri })
+      return result.contents
+    })
   }
 
   async getPrompt(
@@ -278,9 +486,102 @@ export class SkillMcpManager {
     name: string,
     args: Record<string, string>
   ): Promise<unknown> {
-    const client = await this.getOrCreateClientWithRetry(info, context.config)
-    const result = await client.getPrompt({ name, arguments: args })
-    return result.messages
+    return this.withOperationRetry(info, context.config, async (client) => {
+      const result = await client.getPrompt({ name, arguments: args })
+      return result.messages
+    })
+  }
+
+  private async withOperationRetry<T>(
+    info: SkillMcpClientInfo,
+    config: ClaudeCodeMcpServer,
+    operation: (client: Client) => Promise<T>
+  ): Promise<T> {
+    const maxRetries = 3
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const client = await this.getOrCreateClientWithRetry(info, config)
+        return await operation(client)
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        const errorMessage = lastError.message.toLowerCase()
+
+        const stepUpHandled = await this.handleStepUpIfNeeded(lastError, config)
+        if (stepUpHandled) {
+          await this.forceReconnect(info)
+          continue
+        }
+
+        if (!errorMessage.includes("not connected")) {
+          throw lastError
+        }
+
+        if (attempt === maxRetries) {
+          throw new Error(
+            `Failed after ${maxRetries} reconnection attempts: ${lastError.message}`
+          )
+        }
+
+        await this.forceReconnect(info)
+      }
+    }
+
+    throw lastError || new Error("Operation failed with unknown error")
+  }
+
+  private async handleStepUpIfNeeded(
+    error: Error,
+    config: ClaudeCodeMcpServer
+  ): Promise<boolean> {
+    if (!config.oauth || !config.url) {
+      return false
+    }
+
+    const statusMatch = /\b403\b/.exec(error.message)
+    if (!statusMatch) {
+      return false
+    }
+
+    const headers: Record<string, string> = {}
+    const wwwAuthMatch = /WWW-Authenticate:\s*(.+)/i.exec(error.message)
+    if (wwwAuthMatch?.[1]) {
+      headers["www-authenticate"] = wwwAuthMatch[1]
+    }
+
+    const stepUp = isStepUpRequired(403, headers)
+    if (!stepUp) {
+      return false
+    }
+
+    const currentScopes = config.oauth.scopes ?? []
+    const merged = mergeScopes(currentScopes, stepUp.requiredScopes)
+    config.oauth.scopes = merged
+
+    this.authProviders.delete(config.url)
+    const provider = this.getOrCreateAuthProvider(config.url, config.oauth)
+
+    try {
+      await provider.login()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  private async forceReconnect(info: SkillMcpClientInfo): Promise<void> {
+    const key = this.getClientKey(info)
+    const existing = this.clients.get(key)
+    if (existing) {
+      this.clients.delete(key)
+      try {
+        await existing.client.close()
+      } catch { /* process may already be terminated */ }
+      try {
+        await existing.transport.close()
+      } catch { /* transport may already be terminated */ }
+    }
   }
 
   private async getOrCreateClientWithRetry(
