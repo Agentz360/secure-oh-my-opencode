@@ -51,6 +51,16 @@ describe("sisyphus-task", () => {
       expect(category.model).toBe("openai/gpt-5.2-codex")
       expect(category.variant).toBe("xhigh")
     })
+
+    test("deep category has model and variant config", () => {
+      // #given
+      const category = DEFAULT_CATEGORIES["deep"]
+
+      // #when / #then
+      expect(category).toBeDefined()
+      expect(category.model).toBe("openai/gpt-5.2-codex")
+      expect(category.variant).toBe("medium")
+    })
   })
 
   describe("CATEGORY_PROMPT_APPENDS", () => {
@@ -63,13 +73,22 @@ describe("sisyphus-task", () => {
       expect(promptAppend).toContain("Design-first")
     })
 
-    test("ultrabrain category has strategic prompt", () => {
+    test("ultrabrain category has deep logical reasoning prompt", () => {
       // #given
       const promptAppend = CATEGORY_PROMPT_APPENDS["ultrabrain"]
 
       // #when / #then
-      expect(promptAppend).toContain("BUSINESS LOGIC")
+      expect(promptAppend).toContain("DEEP LOGICAL REASONING")
       expect(promptAppend).toContain("Strategic advisor")
+    })
+
+    test("deep category has goal-oriented autonomous prompt", () => {
+      // #given
+      const promptAppend = CATEGORY_PROMPT_APPENDS["deep"]
+
+      // #when / #then
+      expect(promptAppend).toContain("GOAL-ORIENTED")
+      expect(promptAppend).toContain("autonomous")
     })
   })
 
@@ -278,6 +297,36 @@ describe("sisyphus-task", () => {
 
       // #when
       const result = resolveCategoryConfig(categoryName, { systemDefaultModel: SYSTEM_DEFAULT_MODEL })
+
+      // #then
+      expect(result).toBeNull()
+    })
+
+    test("blocks requiresModel when availability is known and missing the required model", () => {
+      // #given
+      const categoryName = "deep"
+      const availableModels = new Set<string>(["anthropic/claude-opus-4-5"])
+
+      // #when
+      const result = resolveCategoryConfig(categoryName, {
+        systemDefaultModel: SYSTEM_DEFAULT_MODEL,
+        availableModels,
+      })
+
+      // #then
+      expect(result).toBeNull()
+    })
+
+    test("blocks requiresModel when availability is empty", () => {
+      // #given
+      const categoryName = "deep"
+      const availableModels = new Set<string>()
+
+      // #when
+      const result = resolveCategoryConfig(categoryName, {
+        systemDefaultModel: SYSTEM_DEFAULT_MODEL,
+        availableModels,
+      })
 
       // #then
       expect(result).toBeNull()
@@ -1472,6 +1521,73 @@ describe("sisyphus-task", () => {
       expect(result).toContain("SUPERVISED TASK COMPLETED")
       expect(result).toContain("Custom unstable result")
     }, { timeout: 20000 })
+  })
+
+  describe("category model resolution fallback", () => {
+    test("category uses resolved.model when connectedProvidersCache is null and availableModels is empty", async () => {
+      // #given - connectedProvidersCache returns null (simulates missing cache file)
+      // This is a regression test for PR #1227 which removed resolved.model from userModel chain
+      cacheSpy.mockReturnValue(null)
+
+      const { createDelegateTask } = require("./tools")
+      let launchInput: any
+
+      const mockManager = {
+        launch: async (input: any) => {
+          launchInput = input
+          return {
+            id: "task-fallback",
+            sessionID: "ses_fallback_test",
+            description: "Fallback test task",
+            agent: "sisyphus-junior",
+            status: "running",
+          }
+        },
+      }
+
+      const mockClient = {
+        app: { agents: async () => ({ data: [] }) },
+        config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
+        model: { list: async () => [] },
+        session: {
+          create: async () => ({ data: { id: "test-session" } }),
+          prompt: async () => ({ data: {} }),
+          messages: async () => ({ data: [] }),
+        },
+      }
+
+      // NO userCategories override, NO sisyphusJuniorModel
+      const tool = createDelegateTask({
+        manager: mockManager,
+        client: mockClient,
+        // userCategories: undefined - use DEFAULT_CATEGORIES only
+        // sisyphusJuniorModel: undefined
+      })
+
+      const toolContext = {
+        sessionID: "parent-session",
+        messageID: "parent-message",
+        agent: "sisyphus",
+        abort: new AbortController().signal,
+      }
+
+      // #when - using "quick" category which should use "anthropic/claude-haiku-4-5"
+      await tool.execute(
+        {
+          description: "Test category fallback",
+          prompt: "Do something quick",
+          category: "quick",
+          run_in_background: true,
+          load_skills: [],
+        },
+        toolContext
+      )
+
+      // #then - model should be anthropic/claude-haiku-4-5 from DEFAULT_CATEGORIES
+      //         NOT anthropic/claude-sonnet-4-5 (system default)
+      expect(launchInput.model.providerID).toBe("anthropic")
+      expect(launchInput.model.modelID).toBe("claude-haiku-4-5")
+    })
   })
 
   describe("browserProvider propagation", () => {
