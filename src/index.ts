@@ -34,6 +34,8 @@ import {
   createQuestionLabelTruncatorHook,
   createSubagentQuestionBlockerHook,
   createStopContinuationGuardHook,
+  createCompactionContextInjector,
+  createUnstableAgentBabysitterHook,
 } from "./hooks";
 import {
   contextCollector,
@@ -278,12 +280,44 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
     ? createStopContinuationGuardHook(ctx)
     : null;
 
+  const compactionContextInjector = isHookEnabled("compaction-context-injector")
+    ? createCompactionContextInjector()
+    : null;
+
   const todoContinuationEnforcer = isHookEnabled("todo-continuation-enforcer")
     ? createTodoContinuationEnforcer(ctx, {
         backgroundManager,
         isContinuationStopped: stopContinuationGuard?.isStopped,
       })
     : null;
+
+  const unstableAgentBabysitter = isHookEnabled("unstable-agent-babysitter")
+    ? createUnstableAgentBabysitterHook(
+          {
+            directory: ctx.directory,
+            client: {
+              session: {
+                messages: async (args) => {
+                  const result = await ctx.client.session.messages(args)
+                  if (Array.isArray(result)) return result
+                  if (typeof result === "object" && result !== null && "data" in result) {
+                    const record = result as Record<string, unknown>
+                    return { data: record.data }
+                  }
+                  return []
+                },
+                prompt: async (args) => {
+                  await ctx.client.session.prompt(args)
+                },
+              },
+            },
+          },
+          {
+            backgroundManager,
+            config: pluginConfig.babysitting,
+          }
+        )
+      : null;
 
   if (sessionRecovery && todoContinuationEnforcer) {
     sessionRecovery.setOnAbortCallback(todoContinuationEnforcer.markRecovering);
@@ -515,6 +549,7 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
       await backgroundNotificationHook?.event(input);
       await sessionNotification?.(input);
       await todoContinuationEnforcer?.handler(input);
+      await unstableAgentBabysitter?.event(input);
       await contextWindowMonitor?.event(input);
       await directoryAgentsInjector?.event(input);
       await directoryReadmeInjector?.event(input);
@@ -717,6 +752,19 @@ await editErrorRecovery?.["tool.execute.after"](input, output);
         await delegateTaskRetry?.["tool.execute.after"](input, output);
         await atlasHook?.["tool.execute.after"]?.(input, output);
       await taskResumeInfo["tool.execute.after"](input, output);
+    },
+
+    "experimental.session.compacting": async (input: { sessionID: string }) => {
+      if (!compactionContextInjector) {
+        return;
+      }
+      await compactionContextInjector({
+        sessionID: input.sessionID,
+        providerID: "anthropic",
+        modelID: "claude-opus-4-5",
+        usageRatio: 0.8,
+        directory: ctx.directory,
+      });
     },
   };
 };
