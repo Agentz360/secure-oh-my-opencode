@@ -403,9 +403,16 @@ export function createConfigHandler(deps: ConfigHandlerDeps) {
       LspHover: false,
       LspCodeActions: false,
       LspCodeActionResolve: false,
+      "task_*": false,
+      teammate: false,
+      ...(pluginConfig.new_task_system_enabled ? { todowrite: false, todoread: false } : {}),
     };
 
     type AgentWithPermission = { permission?: Record<string, unknown> };
+
+    // In CLI run mode, deny Question tool for all agents (no TUI to answer questions)
+    const isCliRunMode = process.env.OPENCODE_CLI_RUN_MODE === "true";
+    const questionPermission = isCliRunMode ? "deny" : "allow";
     
     if (agentResult.librarian) {
       const agent = agentResult.librarian as AgentWithPermission;
@@ -417,23 +424,23 @@ export function createConfigHandler(deps: ConfigHandlerDeps) {
     }
     if (agentResult["atlas"]) {
       const agent = agentResult["atlas"] as AgentWithPermission;
-      agent.permission = { ...agent.permission, task: "deny", call_omo_agent: "deny", delegate_task: "allow" };
+      agent.permission = { ...agent.permission, task: "deny", call_omo_agent: "deny", delegate_task: "allow", "task_*": "allow", teammate: "allow" };
     }
     if (agentResult.sisyphus) {
       const agent = agentResult.sisyphus as AgentWithPermission;
-      agent.permission = { ...agent.permission, call_omo_agent: "deny", delegate_task: "allow", question: "allow" };
+      agent.permission = { ...agent.permission, call_omo_agent: "deny", delegate_task: "allow", question: questionPermission, "task_*": "allow", teammate: "allow" };
     }
     if (agentResult.hephaestus) {
       const agent = agentResult.hephaestus as AgentWithPermission;
-      agent.permission = { ...agent.permission, call_omo_agent: "deny", delegate_task: "allow", question: "allow" };
+      agent.permission = { ...agent.permission, call_omo_agent: "deny", delegate_task: "allow", question: questionPermission };
     }
     if (agentResult["prometheus"]) {
       const agent = agentResult["prometheus"] as AgentWithPermission;
-      agent.permission = { ...agent.permission, call_omo_agent: "deny", delegate_task: "allow", question: "allow" };
+      agent.permission = { ...agent.permission, call_omo_agent: "deny", delegate_task: "allow", question: questionPermission, "task_*": "allow", teammate: "allow" };
     }
     if (agentResult["sisyphus-junior"]) {
       const agent = agentResult["sisyphus-junior"] as AgentWithPermission;
-      agent.permission = { ...agent.permission, delegate_task: "allow" };
+      agent.permission = { ...agent.permission, delegate_task: "allow", "task_*": "allow", teammate: "allow" };
     }
 
     config.permission = {
