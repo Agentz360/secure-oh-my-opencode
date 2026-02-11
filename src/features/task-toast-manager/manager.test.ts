@@ -1,17 +1,20 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test"
-import { TaskToastManager } from "./manager"
+declare const require: (name: string) => any
+const { describe, test, expect, beforeEach, afterEach, mock } = require("bun:test")
 import type { ConcurrencyManager } from "../background-agent/concurrency"
 
+type TaskToastManagerClass = typeof import("./manager").TaskToastManager
+
 describe("TaskToastManager", () => {
+  let TaskToastManager: TaskToastManagerClass
   let mockClient: {
     tui: {
       showToast: ReturnType<typeof mock>
     }
   }
-  let toastManager: TaskToastManager
+  let toastManager: InstanceType<TaskToastManagerClass>
   let mockConcurrencyManager: ConcurrencyManager
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockClient = {
       tui: {
         showToast: mock(() => Promise.resolve()),
@@ -20,8 +23,16 @@ describe("TaskToastManager", () => {
     mockConcurrencyManager = {
       getConcurrencyLimit: mock(() => 5),
     } as unknown as ConcurrencyManager
+
+    const mod = await import("./manager")
+    TaskToastManager = mod.TaskToastManager
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     toastManager = new TaskToastManager(mockClient as any, mockConcurrencyManager)
+  })
+
+  afterEach(() => {
+    mock.restore()
   })
 
   describe("skills in toast message", () => {
@@ -192,7 +203,7 @@ describe("TaskToastManager", () => {
         description: "Task with inherited model",
         agent: "sisyphus-junior",
         isBackground: false,
-        modelInfo: { model: "cliproxy/claude-opus-4-5", type: "inherited" as const },
+        modelInfo: { model: "cliproxy/claude-opus-4-6", type: "inherited" as const },
       }
 
       // when - addTask is called
@@ -202,7 +213,7 @@ describe("TaskToastManager", () => {
       expect(mockClient.tui.showToast).toHaveBeenCalled()
       const call = mockClient.tui.showToast.mock.calls[0][0]
       expect(call.body.message).toContain("[FALLBACK]")
-      expect(call.body.message).toContain("cliproxy/claude-opus-4-5")
+      expect(call.body.message).toContain("cliproxy/claude-opus-4-6")
       expect(call.body.message).toContain("(inherited from parent)")
     })
 
