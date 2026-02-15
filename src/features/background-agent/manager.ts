@@ -5,11 +5,14 @@ import type {
   LaunchInput,
   ResumeInput,
 } from "./types"
+import { TaskHistory } from "./task-history"
 import { log, getAgentToolRestrictions, promptWithModelSuggestionRetry } from "../../shared"
+import { setSessionTools } from "../../shared/session-tools-store"
 import { ConcurrencyManager } from "./concurrency"
 import type { BackgroundTaskConfig, TmuxConfig } from "../../config/schema"
 import { isInsideTmux } from "../../shared/tmux"
 import {
+  DEFAULT_MESSAGE_STALENESS_TIMEOUT_MS,
   DEFAULT_STALE_TIMEOUT_MS,
   MIN_IDLE_TIME_MS,
   MIN_RUNTIME_BEFORE_STALE_MS,
@@ -90,6 +93,7 @@ export class BackgroundManager {
   private completionTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
   private idleDeferralTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
   private notificationQueueByParent: Map<string, Promise<void>> = new Map()
+  readonly taskHistory = new TaskHistory()
 
   constructor(
     ctx: PluginInput,
@@ -139,11 +143,13 @@ export class BackgroundManager {
       parentMessageID: input.parentMessageID,
       parentModel: input.parentModel,
       parentAgent: input.parentAgent,
+      parentTools: input.parentTools,
       model: input.model,
       category: input.category,
     }
 
     this.tasks.set(task.id, task)
+    this.taskHistory.record(input.parentSessionID, { id: task.id, agent: input.agent, description: input.description, status: "pending", category: input.category })
 
     // Track for batched notifications immediately (pending state)
     if (input.parentSessionID) {
@@ -291,6 +297,7 @@ export class BackgroundManager {
     task.concurrencyKey = concurrencyKey
     task.concurrencyGroup = concurrencyKey
 
+    this.taskHistory.record(input.parentSessionID, { id: task.id, sessionID, agent: input.agent, description: input.description, status: "running", category: input.category, startedAt: task.startedAt })
     this.startPolling()
 
     log("[background-agent] Launching task:", { taskId: task.id, sessionID, agent: input.agent })
@@ -324,12 +331,16 @@ export class BackgroundManager {
         ...(launchModel ? { model: launchModel } : {}),
         ...(launchVariant ? { variant: launchVariant } : {}),
         system: input.skillContent,
-        tools: {
-          ...getAgentToolRestrictions(input.agent),
-          task: false,
-          call_omo_agent: true,
-          question: false,
-        },
+        tools: (() => {
+          const tools = {
+            ...getAgentToolRestrictions(input.agent),
+            task: false,
+            call_omo_agent: true,
+            question: false,
+          }
+          setSessionTools(sessionID, tools)
+          return tools
+        })(),
         parts: [{ type: "text", text: input.prompt }],
       },
     }).catch((error) => {
@@ -486,6 +497,7 @@ export class BackgroundManager {
     this.tasks.set(task.id, task)
     subagentSessions.add(input.sessionID)
     this.startPolling()
+    this.taskHistory.record(input.parentSessionID, { id: task.id, sessionID: input.sessionID, agent: input.agent || "task", description: input.description, status: "running", startedAt: task.startedAt })
 
     if (input.parentSessionID) {
       const pending = this.pendingByParent.get(input.parentSessionID) ?? new Set()
@@ -530,6 +542,9 @@ export class BackgroundManager {
     existingTask.parentMessageID = input.parentMessageID
     existingTask.parentModel = input.parentModel
     existingTask.parentAgent = input.parentAgent
+    if (input.parentTools) {
+      existingTask.parentTools = input.parentTools
+    }
     // Reset startedAt on resume to prevent immediate completion
     // The MIN_IDLE_TIME_MS check uses startedAt, so resumed tasks need fresh timing
     existingTask.startedAt = new Date()
@@ -583,12 +598,16 @@ export class BackgroundManager {
         agent: existingTask.agent,
         ...(resumeModel ? { model: resumeModel } : {}),
         ...(resumeVariant ? { variant: resumeVariant } : {}),
-        tools: {
-          ...getAgentToolRestrictions(existingTask.agent),
-          task: false,
-          call_omo_agent: true,
-          question: false,
-        },
+        tools: (() => {
+          const tools = {
+            ...getAgentToolRestrictions(existingTask.agent),
+            task: false,
+            call_omo_agent: true,
+            question: false,
+          }
+          setSessionTools(existingTask.sessionID!, tools)
+          return tools
+        })(),
         parts: [{ type: "text", text: input.prompt }],
       },
     }).catch((error) => {
@@ -657,16 +676,17 @@ export class BackgroundManager {
         this.idleDeferralTimers.delete(task.id)
       }
 
-      if (partInfo?.type === "tool" || partInfo?.tool) {
-        if (!task.progress) {
-          task.progress = {
-            toolCalls: 0,
-            lastUpdate: new Date(),
-          }
+      if (!task.progress) {
+        task.progress = {
+          toolCalls: 0,
+          lastUpdate: new Date(),
         }
+      }
+      task.progress.lastUpdate = new Date()
+
+      if (partInfo?.type === "tool" || partInfo?.tool) {
         task.progress.toolCalls += 1
         task.progress.lastTool = partInfo.tool
-        task.progress.lastUpdate = new Date()
       }
     }
 
@@ -741,6 +761,7 @@ export class BackgroundManager {
       task.status = "error"
       task.error = errorMessage ?? "Session error"
       task.completedAt = new Date()
+      this.taskHistory.record(task.parentSessionID, { id: task.id, sessionID: task.sessionID, agent: task.agent, description: task.description, status: "error", category: task.category, startedAt: task.startedAt, completedAt: task.completedAt })
 
       if (task.concurrencyKey) {
         this.concurrencyManager.release(task.concurrencyKey)
@@ -951,6 +972,7 @@ export class BackgroundManager {
     if (reason) {
       task.error = reason
     }
+    this.taskHistory.record(task.parentSessionID, { id: task.id, sessionID: task.sessionID, agent: task.agent, description: task.description, status: "cancelled", category: task.category, startedAt: task.startedAt, completedAt: task.completedAt })
 
     if (task.concurrencyKey) {
       this.concurrencyManager.release(task.concurrencyKey)
@@ -1095,6 +1117,7 @@ export class BackgroundManager {
     // Atomically mark as completed to prevent race conditions
     task.status = "completed"
     task.completedAt = new Date()
+    this.taskHistory.record(task.parentSessionID, { id: task.id, sessionID: task.sessionID, agent: task.agent, description: task.description, status: "completed", category: task.category, startedAt: task.startedAt, completedAt: task.completedAt })
 
     // Release concurrency BEFORE any async operations to prevent slot leaks
     if (task.concurrencyKey) {
@@ -1243,6 +1266,7 @@ Use \`background_output(task_id="${task.id}")\` to retrieve this result when rea
           noReply: !allComplete,
           ...(agent !== undefined ? { agent } : {}),
           ...(model !== undefined ? { model } : {}),
+          ...(task.parentTools ? { tools: task.parentTools } : {}),
           parts: [{ type: "text", text: notification }],
         },
       })
@@ -1414,24 +1438,54 @@ Use \`background_output(task_id="${task.id}")\` to retrieve this result when rea
     }
   }
 
-  private async checkAndInterruptStaleTasks(): Promise<void> {
+  private async checkAndInterruptStaleTasks(
+    allStatuses: Record<string, { type: string }> = {},
+  ): Promise<void> {
     const staleTimeoutMs = this.config?.staleTimeoutMs ?? DEFAULT_STALE_TIMEOUT_MS
+    const messageStalenessMs = this.config?.messageStalenessTimeoutMs ?? DEFAULT_MESSAGE_STALENESS_TIMEOUT_MS
     const now = Date.now()
 
     for (const task of this.tasks.values()) {
       if (task.status !== "running") continue
-      if (!task.progress?.lastUpdate) continue
-      
+
       const startedAt = task.startedAt
       const sessionID = task.sessionID
       if (!startedAt || !sessionID) continue
 
+      const sessionIsRunning = allStatuses[sessionID]?.type === "running"
       const runtime = now - startedAt.getTime()
+
+      if (!task.progress?.lastUpdate) {
+        if (sessionIsRunning) continue
+        if (runtime <= messageStalenessMs) continue
+
+        const staleMinutes = Math.round(runtime / 60000)
+        task.status = "cancelled"
+        task.error = `Stale timeout (no activity for ${staleMinutes}min since start)`
+        task.completedAt = new Date()
+
+        if (task.concurrencyKey) {
+          this.concurrencyManager.release(task.concurrencyKey)
+          task.concurrencyKey = undefined
+        }
+
+        this.client.session.abort({ path: { id: sessionID } }).catch(() => {})
+        log(`[background-agent] Task ${task.id} interrupted: no progress since start`)
+
+        try {
+          await this.enqueueNotificationForParent(task.parentSessionID, () => this.notifyParentSession(task))
+        } catch (err) {
+          log("[background-agent] Error in notifyParentSession for stale task:", { taskId: task.id, error: err })
+        }
+        continue
+      }
+
+      if (sessionIsRunning) continue
+
       if (runtime < MIN_RUNTIME_BEFORE_STALE_MS) continue
 
       const timeSinceLastUpdate = now - task.progress.lastUpdate.getTime()
       if (timeSinceLastUpdate <= staleTimeoutMs) continue
-
       if (task.status !== "running") continue
 
       const staleMinutes = Math.round(timeSinceLastUpdate / 60000)
@@ -1444,10 +1498,7 @@ Use \`background_output(task_id="${task.id}")\` to retrieve this result when rea
         task.concurrencyKey = undefined
       }
 
-      this.client.session.abort({
-        path: { id: sessionID },
-      }).catch(() => {})
-
+      this.client.session.abort({ path: { id: sessionID } }).catch(() => {})
       log(`[background-agent] Task ${task.id} interrupted: stale timeout`)
 
       try {
@@ -1460,10 +1511,11 @@ Use \`background_output(task_id="${task.id}")\` to retrieve this result when rea
 
   private async pollRunningTasks(): Promise<void> {
     this.pruneStaleTasksAndNotifications()
-    await this.checkAndInterruptStaleTasks()
 
     const statusResult = await this.client.session.status()
     const allStatuses = (statusResult.data ?? {}) as Record<string, { type: string }>
+
+    await this.checkAndInterruptStaleTasks(allStatuses)
 
     for (const task of this.tasks.values()) {
       if (task.status !== "running") continue
@@ -1474,7 +1526,6 @@ Use \`background_output(task_id="${task.id}")\` to retrieve this result when rea
       try {
         const sessionStatus = allStatuses[sessionID]
         
-        // Don't skip if session not in status - fall through to message-based detection
         if (sessionStatus?.type === "idle") {
           // Edge guard: Validate session has actual output before completing
           const hasValidOutput = await this.validateSessionHasOutput(sessionID)

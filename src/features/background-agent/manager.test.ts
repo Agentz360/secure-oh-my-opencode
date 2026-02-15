@@ -2289,9 +2289,220 @@ describe("BackgroundManager.checkAndInterruptStaleTasks", () => {
 
     getTaskMap(manager).set(task.id, task)
 
-    await manager["checkAndInterruptStaleTasks"]()
+     await manager["checkAndInterruptStaleTasks"]()
 
     expect(task.status).toBe("cancelled")
+  })
+
+  test("should NOT interrupt task when session is running, even with stale lastUpdate", async () => {
+    //#given
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput, { staleTimeoutMs: 180_000 })
+
+    const task: BackgroundTask = {
+      id: "task-running-session",
+      sessionID: "session-running",
+      parentSessionID: "parent-rs",
+      parentMessageID: "msg-rs",
+      description: "Task with running session",
+      prompt: "Test",
+      agent: "test-agent",
+      status: "running",
+      startedAt: new Date(Date.now() - 300_000),
+      progress: {
+        toolCalls: 2,
+        lastUpdate: new Date(Date.now() - 300_000),
+      },
+    }
+
+    getTaskMap(manager).set(task.id, task)
+
+    //#when — session is actively running
+    await manager["checkAndInterruptStaleTasks"]({ "session-running": { type: "running" } })
+
+    //#then — task survives because session is running
+    expect(task.status).toBe("running")
+  })
+
+  test("should interrupt task when session is idle and lastUpdate exceeds stale timeout", async () => {
+    //#given
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput, { staleTimeoutMs: 180_000 })
+    stubNotifyParentSession(manager)
+
+    const task: BackgroundTask = {
+      id: "task-idle-session",
+      sessionID: "session-idle",
+      parentSessionID: "parent-is",
+      parentMessageID: "msg-is",
+      description: "Task with idle session",
+      prompt: "Test",
+      agent: "test-agent",
+      status: "running",
+      startedAt: new Date(Date.now() - 300_000),
+      progress: {
+        toolCalls: 2,
+        lastUpdate: new Date(Date.now() - 300_000),
+      },
+    }
+
+    getTaskMap(manager).set(task.id, task)
+
+    //#when — session is idle
+    await manager["checkAndInterruptStaleTasks"]({ "session-idle": { type: "idle" } })
+
+    //#then — killed because session is idle with stale lastUpdate
+    expect(task.status).toBe("cancelled")
+    expect(task.error).toContain("Stale timeout")
+  })
+
+  test("should NOT interrupt running session even with very old lastUpdate (no safety net)", async () => {
+    //#given
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput, { staleTimeoutMs: 180_000 })
+
+    const task: BackgroundTask = {
+      id: "task-long-running",
+      sessionID: "session-long",
+      parentSessionID: "parent-lr",
+      parentMessageID: "msg-lr",
+      description: "Long running task",
+      prompt: "Test",
+      agent: "test-agent",
+      status: "running",
+      startedAt: new Date(Date.now() - 900_000),
+      progress: {
+        toolCalls: 5,
+        lastUpdate: new Date(Date.now() - 900_000),
+      },
+    }
+
+    getTaskMap(manager).set(task.id, task)
+
+    //#when — session is running, lastUpdate 15min old
+    await manager["checkAndInterruptStaleTasks"]({ "session-long": { type: "running" } })
+
+    //#then — running sessions are NEVER stale-killed
+    expect(task.status).toBe("running")
+  })
+
+  test("should NOT interrupt running session with no progress (undefined lastUpdate)", async () => {
+    //#given — no progress at all, but session is running
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput, { messageStalenessTimeoutMs: 600_000 })
+
+    const task: BackgroundTask = {
+      id: "task-running-no-progress",
+      sessionID: "session-rnp",
+      parentSessionID: "parent-rnp",
+      parentMessageID: "msg-rnp",
+      description: "Running no progress",
+      prompt: "Test",
+      agent: "test-agent",
+      status: "running",
+      startedAt: new Date(Date.now() - 15 * 60 * 1000),
+      progress: undefined,
+    }
+
+    getTaskMap(manager).set(task.id, task)
+
+    //#when — session is running despite no progress
+    await manager["checkAndInterruptStaleTasks"]({ "session-rnp": { type: "running" } })
+
+    //#then — running sessions are NEVER killed
+    expect(task.status).toBe("running")
+  })
+
+  test("should interrupt task with no lastUpdate after messageStalenessTimeout", async () => {
+    //#given
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput, { messageStalenessTimeoutMs: 600_000 })
+    stubNotifyParentSession(manager)
+
+    const task: BackgroundTask = {
+      id: "task-no-update",
+      sessionID: "session-no-update",
+      parentSessionID: "parent-nu",
+      parentMessageID: "msg-nu",
+      description: "No update task",
+      prompt: "Test",
+      agent: "test-agent",
+      status: "running",
+      startedAt: new Date(Date.now() - 15 * 60 * 1000),
+      progress: undefined,
+    }
+
+    getTaskMap(manager).set(task.id, task)
+
+    //#when — no progress update for 15 minutes
+    await manager["checkAndInterruptStaleTasks"]({})
+
+    //#then — killed after messageStalenessTimeout
+    expect(task.status).toBe("cancelled")
+    expect(task.error).toContain("no activity")
+  })
+
+  test("should NOT interrupt task with no lastUpdate within messageStalenessTimeout", async () => {
+    //#given
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput, { messageStalenessTimeoutMs: 600_000 })
+
+    const task: BackgroundTask = {
+      id: "task-fresh-no-update",
+      sessionID: "session-fresh",
+      parentSessionID: "parent-fn",
+      parentMessageID: "msg-fn",
+      description: "Fresh no-update task",
+      prompt: "Test",
+      agent: "test-agent",
+      status: "running",
+      startedAt: new Date(Date.now() - 5 * 60 * 1000),
+      progress: undefined,
+    }
+
+    getTaskMap(manager).set(task.id, task)
+
+    //#when — only 5 min since start, within 10min timeout
+    await manager["checkAndInterruptStaleTasks"]({})
+
+    //#then — task survives
+    expect(task.status).toBe("running")
   })
 })
 
@@ -3043,5 +3254,163 @@ describe("BackgroundManager.handleEvent - early session.idle deferral", () => {
       Date.now = realDateNow
       manager.shutdown()
     }
+  })
+})
+
+describe("BackgroundManager.handleEvent - non-tool event lastUpdate", () => {
+  test("should update lastUpdate on text-type message.part.updated event", () => {
+    //#given - a running task with stale lastUpdate
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+
+    const oldUpdate = new Date(Date.now() - 300_000)
+    const task: BackgroundTask = {
+      id: "task-text-1",
+      sessionID: "session-text-1",
+      parentSessionID: "parent-1",
+      parentMessageID: "msg-1",
+      description: "Thinking task",
+      prompt: "Think deeply",
+      agent: "oracle",
+      status: "running",
+      startedAt: new Date(Date.now() - 600_000),
+      progress: {
+        toolCalls: 2,
+        lastUpdate: oldUpdate,
+      },
+    }
+    getTaskMap(manager).set(task.id, task)
+
+    //#when - a text-type message.part.updated event arrives
+    manager.handleEvent({
+      type: "message.part.updated",
+      properties: { sessionID: "session-text-1", type: "text" },
+    })
+
+    //#then - lastUpdate should be refreshed, toolCalls should NOT change
+    expect(task.progress!.lastUpdate.getTime()).toBeGreaterThan(oldUpdate.getTime())
+    expect(task.progress!.toolCalls).toBe(2)
+  })
+
+  test("should update lastUpdate on thinking-type message.part.updated event", () => {
+    //#given - a running task with stale lastUpdate
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+
+    const oldUpdate = new Date(Date.now() - 300_000)
+    const task: BackgroundTask = {
+      id: "task-thinking-1",
+      sessionID: "session-thinking-1",
+      parentSessionID: "parent-1",
+      parentMessageID: "msg-1",
+      description: "Reasoning task",
+      prompt: "Reason about architecture",
+      agent: "oracle",
+      status: "running",
+      startedAt: new Date(Date.now() - 600_000),
+      progress: {
+        toolCalls: 0,
+        lastUpdate: oldUpdate,
+      },
+    }
+    getTaskMap(manager).set(task.id, task)
+
+    //#when - a thinking-type message.part.updated event arrives
+    manager.handleEvent({
+      type: "message.part.updated",
+      properties: { sessionID: "session-thinking-1", type: "thinking" },
+    })
+
+    //#then - lastUpdate should be refreshed, toolCalls should remain 0
+    expect(task.progress!.lastUpdate.getTime()).toBeGreaterThan(oldUpdate.getTime())
+    expect(task.progress!.toolCalls).toBe(0)
+  })
+
+  test("should initialize progress on first non-tool event", () => {
+    //#given - a running task with NO progress field
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+
+    const task: BackgroundTask = {
+      id: "task-init-1",
+      sessionID: "session-init-1",
+      parentSessionID: "parent-1",
+      parentMessageID: "msg-1",
+      description: "New task",
+      prompt: "Start thinking",
+      agent: "oracle",
+      status: "running",
+      startedAt: new Date(Date.now() - 60_000),
+    }
+    getTaskMap(manager).set(task.id, task)
+
+    //#when - a text-type event arrives before any tool call
+    manager.handleEvent({
+      type: "message.part.updated",
+      properties: { sessionID: "session-init-1", type: "text" },
+    })
+
+    //#then - progress should be initialized with toolCalls: 0 and fresh lastUpdate
+    expect(task.progress).toBeDefined()
+    expect(task.progress!.toolCalls).toBe(0)
+    expect(task.progress!.lastUpdate.getTime()).toBeGreaterThan(Date.now() - 5000)
+  })
+
+  test("should NOT mark thinking model as stale when text events refresh lastUpdate", async () => {
+    //#given - a running task where text events keep lastUpdate fresh
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => ({}),
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput, { staleTimeoutMs: 180_000 })
+    stubNotifyParentSession(manager)
+
+    const task: BackgroundTask = {
+      id: "task-alive-1",
+      sessionID: "session-alive-1",
+      parentSessionID: "parent-1",
+      parentMessageID: "msg-1",
+      description: "Long thinking task",
+      prompt: "Deep reasoning",
+      agent: "oracle",
+      status: "running",
+      startedAt: new Date(Date.now() - 600_000),
+      progress: {
+        toolCalls: 0,
+        lastUpdate: new Date(Date.now() - 300_000),
+      },
+    }
+    getTaskMap(manager).set(task.id, task)
+
+    //#when - a text event arrives, then stale check runs
+    manager.handleEvent({
+      type: "message.part.updated",
+      properties: { sessionID: "session-alive-1", type: "text" },
+    })
+    await manager["checkAndInterruptStaleTasks"]()
+
+    //#then - task should still be running (text event refreshed lastUpdate)
+    expect(task.status).toBe("running")
   })
 })
