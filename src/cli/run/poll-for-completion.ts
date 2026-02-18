@@ -5,9 +5,9 @@ import { checkCompletionConditions } from "./completion"
 import { normalizeSDKResponse } from "../../shared"
 
 const DEFAULT_POLL_INTERVAL_MS = 500
-const DEFAULT_REQUIRED_CONSECUTIVE = 3
+const DEFAULT_REQUIRED_CONSECUTIVE = 1
 const ERROR_GRACE_CYCLES = 3
-const MIN_STABILIZATION_MS = 10_000
+const MIN_STABILIZATION_MS = 0
 
 export interface PollOptions {
   pollIntervalMs?: number
@@ -33,6 +33,10 @@ export async function pollForCompletion(
 
   while (!abortController.signal.aborted) {
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+
+    if (abortController.signal.aborted) {
+      return 130
+    }
 
     // ERROR CHECK FIRST — errors must not be masked by other gates
     if (eventState.mainSessionError) {
@@ -71,6 +75,11 @@ export async function pollForCompletion(
     }
 
     if (!eventState.hasReceivedMeaningfulWork) {
+      if (minStabilizationMs <= 0) {
+        consecutiveCompleteChecks = 0
+        continue
+      }
+
       if (Date.now() - pollStartTimestamp < minStabilizationMs) {
         consecutiveCompleteChecks = 0
         continue
@@ -91,6 +100,10 @@ export async function pollForCompletion(
 
     const shouldExit = await checkCompletionConditions(ctx)
     if (shouldExit) {
+      if (abortController.signal.aborted) {
+        return 130
+      }
+
       consecutiveCompleteChecks++
       if (consecutiveCompleteChecks >= requiredConsecutive) {
         console.log(pc.green("\n\nAll tasks completed."))

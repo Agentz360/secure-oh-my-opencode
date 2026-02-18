@@ -4,8 +4,8 @@ export type { OpencodeClient }
 export interface RunOptions {
   message: string
   agent?: string
+  verbose?: boolean
   directory?: string
-  timeout?: number
   port?: number
   attach?: string
   onComplete?: string
@@ -31,6 +31,7 @@ export interface RunContext {
   sessionID: string
   directory: string
   abortController: AbortController
+  verbose?: boolean
 }
 
 export interface Todo {
@@ -66,12 +67,14 @@ export interface SessionStatusProps {
 
 export interface MessageUpdatedProps {
   info?: {
+    id?: string
     sessionID?: string
     sessionId?: string
     role?: string
     modelID?: string
     providerID?: string
     agent?: string
+    variant?: string
   }
 }
 
@@ -93,6 +96,15 @@ export interface MessagePartUpdatedProps {
     input?: unknown
     time?: { start?: number; end?: number }
   }
+}
+
+export interface MessagePartDeltaProps {
+  sessionID?: string
+  sessionId?: string
+  messageID?: string
+  partID?: string
+  field?: string
+  delta?: string
 }
 
 export interface ToolExecuteProps {
