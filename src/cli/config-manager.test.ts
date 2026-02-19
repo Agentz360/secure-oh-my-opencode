@@ -180,8 +180,8 @@ describe("config-manager ANTIGRAVITY_PROVIDER_CONFIG", () => {
     const required = [
       "antigravity-gemini-3-pro",
       "antigravity-gemini-3-flash",
-      "antigravity-claude-sonnet-4-5",
-      "antigravity-claude-sonnet-4-5-thinking",
+      "antigravity-claude-sonnet-4-6",
+      "antigravity-claude-sonnet-4-6-thinking",
       "antigravity-claude-opus-4-5-thinking",
     ]
 
@@ -227,7 +227,7 @@ describe("config-manager ANTIGRAVITY_PROVIDER_CONFIG", () => {
     const models = (ANTIGRAVITY_PROVIDER_CONFIG as any).google.models as Record<string, any>
 
     // #when checking Claude thinking variants
-    const sonnetThinking = models["antigravity-claude-sonnet-4-5-thinking"]
+    const sonnetThinking = models["antigravity-claude-sonnet-4-6-thinking"]
     const opusThinking = models["antigravity-claude-opus-4-5-thinking"]
 
     // #then both should have low and max variants
@@ -240,48 +240,6 @@ describe("config-manager ANTIGRAVITY_PROVIDER_CONFIG", () => {
 })
 
 describe("generateOmoConfig - model fallback system", () => {
-  test("generates native sonnet models when Claude standard subscription", () => {
-    // #given user has Claude standard subscription (not max20)
-    const config: InstallConfig = {
-      hasClaude: true,
-      isMax20: false,
-      hasOpenAI: false,
-      hasGemini: false,
-      hasCopilot: false,
-      hasOpencodeZen: false,
-      hasZaiCodingPlan: false,
-      hasKimiForCoding: false,
-    }
-
-    // #when generating config
-    const result = generateOmoConfig(config)
-
-    // #then Sisyphus uses Claude (OR logic - at least one provider available)
-    expect(result.$schema).toBe("https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json")
-    expect(result.agents).toBeDefined()
-    expect((result.agents as Record<string, { model: string }>).sisyphus.model).toBe("anthropic/claude-opus-4-6")
-  })
-
-  test("generates native opus models when Claude max20 subscription", () => {
-    // #given user has Claude max20 subscription
-    const config: InstallConfig = {
-      hasClaude: true,
-      isMax20: true,
-      hasOpenAI: false,
-      hasGemini: false,
-      hasCopilot: false,
-      hasOpencodeZen: false,
-      hasZaiCodingPlan: false,
-      hasKimiForCoding: false,
-    }
-
-    // #when generating config
-    const result = generateOmoConfig(config)
-
-    // #then Sisyphus uses Claude (OR logic - at least one provider available)
-    expect((result.agents as Record<string, { model: string }>).sisyphus.model).toBe("anthropic/claude-opus-4-6")
-  })
-
   test("uses github-copilot sonnet fallback when only copilot available", () => {
     // #given user has only copilot (no max plan)
     const config: InstallConfig = {
