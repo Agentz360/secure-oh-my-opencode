@@ -14,6 +14,7 @@ import { GitMasterConfigSchema } from "./git-master"
 import { HookNameSchema } from "./hooks"
 import { NotificationConfigSchema } from "./notification"
 import { RalphLoopConfigSchema } from "./ralph-loop"
+import { RuntimeFallbackConfigSchema } from "./runtime-fallback"
 import { SkillsConfigSchema } from "./skills"
 import { SisyphusConfigSchema } from "./sisyphus"
 import { SisyphusAgentConfigSchema } from "./sisyphus-agent"
@@ -33,6 +34,8 @@ export const OhMyOpenCodeConfigSchema = z.object({
   disabled_commands: z.array(BuiltinCommandNameSchema).optional(),
   /** Disable specific tools by name (e.g., ["todowrite", "todoread"]) */
   disabled_tools: z.array(z.string()).optional(),
+  /** Enable hashline_edit tool/hook integrations (default: true at call site) */
+  hashline_edit: z.boolean().optional(),
   agents: AgentOverridesSchema.optional(),
   categories: CategoriesConfigSchema.optional(),
   claude_code: ClaudeCodeConfigSchema.optional(),
@@ -42,6 +45,7 @@ export const OhMyOpenCodeConfigSchema = z.object({
   auto_update: z.boolean().optional(),
   skills: SkillsConfigSchema.optional(),
   ralph_loop: RalphLoopConfigSchema.optional(),
+  runtime_fallback: RuntimeFallbackConfigSchema.optional(),
   background_task: BackgroundTaskConfigSchema.optional(),
   notification: NotificationConfigSchema.optional(),
   babysitting: BabysittingConfigSchema.optional(),
