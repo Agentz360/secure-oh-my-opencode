@@ -56,8 +56,8 @@ export type SessionHooks = {
   sisyphusJuniorNotepad: ReturnType<typeof createSisyphusJuniorNotepadHook> | null
   noSisyphusGpt: ReturnType<typeof createNoSisyphusGptHook> | null
   noHephaestusNonGpt: ReturnType<typeof createNoHephaestusNonGptHook> | null
-  questionLabelTruncator: ReturnType<typeof createQuestionLabelTruncatorHook>
-  taskResumeInfo: ReturnType<typeof createTaskResumeInfoHook>
+  questionLabelTruncator: ReturnType<typeof createQuestionLabelTruncatorHook> | null
+  taskResumeInfo: ReturnType<typeof createTaskResumeInfoHook> | null
   anthropicEffort: ReturnType<typeof createAnthropicEffortHook> | null
   runtimeFallback: ReturnType<typeof createRuntimeFallbackHook> | null
 }
@@ -234,17 +234,26 @@ export function createSessionHooks(args: {
     ? safeHook("no-hephaestus-non-gpt", () => createNoHephaestusNonGptHook(ctx))
     : null
 
-  const questionLabelTruncator = createQuestionLabelTruncatorHook()
-  const taskResumeInfo = createTaskResumeInfoHook()
+  const questionLabelTruncator = isHookEnabled("question-label-truncator")
+    ? safeHook("question-label-truncator", () => createQuestionLabelTruncatorHook())
+    : null
+  const taskResumeInfo = isHookEnabled("task-resume-info")
+    ? safeHook("task-resume-info", () => createTaskResumeInfoHook())
+    : null
 
   const anthropicEffort = isHookEnabled("anthropic-effort")
     ? safeHook("anthropic-effort", () => createAnthropicEffortHook())
     : null
 
+  const runtimeFallbackConfig =
+    typeof pluginConfig.runtime_fallback === "boolean"
+      ? { enabled: pluginConfig.runtime_fallback }
+      : pluginConfig.runtime_fallback
+
   const runtimeFallback = isHookEnabled("runtime-fallback")
     ? safeHook("runtime-fallback", () =>
         createRuntimeFallbackHook(ctx, {
-          config: pluginConfig.runtime_fallback,
+          config: runtimeFallbackConfig,
           pluginConfig,
         }))
     : null
