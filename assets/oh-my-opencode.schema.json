@@ -82,6 +82,9 @@
     "hashline_edit": {
       "type": "boolean"
     },
+    "model_fallback": {
+      "type": "boolean"
+    },
     "agents": {
       "type": "object",
       "properties": {
@@ -278,6 +281,18 @@
               "additionalProperties": {}
             },
             "ultrawork": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
               "type": "object",
               "properties": {
                 "model": {
@@ -495,6 +510,18 @@
                 }
               },
               "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -692,6 +719,18 @@
               "additionalProperties": {}
             },
             "ultrawork": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
               "type": "object",
               "properties": {
                 "model": {
@@ -909,6 +948,18 @@
                 }
               },
               "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1106,6 +1157,18 @@
               "additionalProperties": {}
             },
             "ultrawork": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
               "type": "object",
               "properties": {
                 "model": {
@@ -1323,6 +1386,18 @@
                 }
               },
               "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1520,6 +1595,18 @@
               "additionalProperties": {}
             },
             "ultrawork": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
               "type": "object",
               "properties": {
                 "model": {
@@ -1737,6 +1824,18 @@
                 }
               },
               "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1934,6 +2033,18 @@
               "additionalProperties": {}
             },
             "ultrawork": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
               "type": "object",
               "properties": {
                 "model": {
@@ -2151,6 +2262,18 @@
                 }
               },
               "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -2348,6 +2471,18 @@
               "additionalProperties": {}
             },
             "ultrawork": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
               "type": "object",
               "properties": {
                 "model": {
@@ -2565,6 +2700,18 @@
                 }
               },
               "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -2772,6 +2919,18 @@
                 }
               },
               "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -2969,6 +3128,18 @@
               "additionalProperties": {}
             },
             "ultrawork": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "variant": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
               "type": "object",
               "properties": {
                 "model": {
